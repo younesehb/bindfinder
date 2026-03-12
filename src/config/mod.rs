@@ -225,6 +225,8 @@ impl AppConfig {
         if self.integration.shell.binding.trim().is_empty() {
             bail!("integration.shell.binding must not be empty");
         }
+        validate_shell_binding_syntax(&self.integration.shell.binding)?;
+        validate_tmux_key_syntax(&self.integration.tmux.key)?;
         Ok(())
     }
 
@@ -732,6 +734,36 @@ fn default_terminal_preferred() -> String {
     "auto".to_string()
 }
 
+fn validate_shell_binding_syntax(value: &str) -> Result<()> {
+    let normalized = value.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return Ok(());
+    }
+
+    if normalized.starts_with("c-") {
+        bail!(
+            "integration.shell.binding uses shell syntax like ctrl-] or alt-/, not tmux syntax like C-]"
+        );
+    }
+
+    Ok(())
+}
+
+fn validate_tmux_key_syntax(value: &str) -> Result<()> {
+    let normalized = value.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return Ok(());
+    }
+
+    if normalized.starts_with("ctrl-") || normalized.starts_with("alt-") || normalized.starts_with("shift-") {
+        bail!(
+            "integration.tmux.key uses tmux syntax like C-] or /, not shell syntax like ctrl-]"
+        );
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -835,5 +867,49 @@ integration:
         assert_eq!(end.code, KeyCode::End);
         assert_eq!(format_binding(&home), "home");
         assert_eq!(format_binding(&end), "end");
+    }
+
+    #[test]
+    fn shell_binding_rejects_tmux_style_key_notation() {
+        let yaml = r#"
+integration:
+  shell:
+    binding: "C-]"
+"#;
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let path = env::temp_dir().join(format!("bindfinder-config-{stamp}.yaml"));
+        fs::write(&path, yaml).expect("write config");
+
+        let err = AppConfig::load_from_path(Some(&path)).expect_err("config should fail");
+        fs::remove_file(&path).ok();
+
+        assert!(err
+            .to_string()
+            .contains("integration.shell.binding uses shell syntax like ctrl-]"));
+    }
+
+    #[test]
+    fn tmux_key_rejects_shell_style_key_notation() {
+        let yaml = r#"
+integration:
+  tmux:
+    key: "ctrl-]"
+"#;
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let path = env::temp_dir().join(format!("bindfinder-config-{stamp}.yaml"));
+        fs::write(&path, yaml).expect("write config");
+
+        let err = AppConfig::load_from_path(Some(&path)).expect_err("config should fail");
+        fs::remove_file(&path).ok();
+
+        assert!(err
+            .to_string()
+            .contains("integration.tmux.key uses tmux syntax like C-]"));
     }
 }

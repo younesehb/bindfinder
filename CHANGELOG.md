@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.13 - 2026-03-13
+
+- improve the installer output with clearer step-by-step progress messages
+- fix installer shortcut hints so they match the current `Ctrl-]` defaults
+- validate shell-vs-tmux key syntax and show explicit hints for common `ctrl-]` vs `C-]` mistakes
+
 ## 0.1.12 - 2026-03-13
 
 - add `bindfinder config validate` for explicit config checks

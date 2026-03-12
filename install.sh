@@ -8,6 +8,22 @@ BIN_DIR="${BINDFINDER_BIN_DIR:-$INSTALL_ROOT/bin}"
 MAN_DIR="${BINDFINDER_MAN_DIR:-$INSTALL_ROOT/share/man/man1}"
 SETUP=1
 
+say() {
+  printf '%s\n' "$*"
+}
+
+step() {
+  printf '==> %s\n' "$*"
+}
+
+done_step() {
+  printf '  -> %s\n' "$*"
+}
+
+warn() {
+  printf 'warning: %s\n' "$*" >&2
+}
+
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "bindfinder installer: missing required command: $1" >&2
@@ -156,8 +172,8 @@ tmux_reload_command() {
 default_shortcut_hint() {
   targets="$1"
   case " $targets " in
-    *" tmux "*) printf '%s\n' 'prefix + / (default tmux shortcut)' ;;
-    *" bash "*|*" zsh "*|*" fish "*) printf '%s\n' 'Alt-/ (default shell shortcut)' ;;
+    *" tmux "*) printf '%s\n' 'prefix + Ctrl-] (default tmux shortcut)' ;;
+    *" bash "*|*" zsh "*|*" fish "*) printf '%s\n' 'Ctrl-] (default shell shortcut)' ;;
     *) printf '%s\n' '' ;;
   esac
 }
@@ -165,19 +181,25 @@ default_shortcut_hint() {
 run_setup() {
   targets="$1"
 
+  step "Writing config"
   "$BIN_DIR/bindfinder" config init
+  done_step "config ready"
 
   if [ -n "$targets" ]; then
+    step "Installing shell/tmux integration"
     for target in $targets; do
       "$BIN_DIR/bindfinder" install "$target" --write
+      done_step "$target integration installed"
     done
   else
-    echo "bindfinder installer: skipping integration setup because the shell could not be detected safely." >&2
-    echo "Run 'bindfinder install auto --write' after adding $BIN_DIR to PATH." >&2
+    warn "skipping integration setup because the shell could not be detected safely"
+    warn "run 'bindfinder install auto --write' after adding $BIN_DIR to PATH"
   fi
 
   if command -v git >/dev/null 2>&1; then
+    step "Importing default cheats"
     "$BIN_DIR/bindfinder" navi import denisidoro/cheats >/dev/null 2>&1 || true
+    done_step "denisidoro/cheats imported when available"
   fi
 }
 
@@ -193,15 +215,27 @@ need_cmd tar
 need_cmd uname
 need_cmd mktemp
 
+say "bindfinder installer"
+
+step "Detecting platform"
 target="$(detect_target)"
+done_step "$target"
+
+step "Resolving version"
 version="$(resolve_version)"
+done_step "v$version"
+
 archive="bindfinder-${version}-${target}.tar.gz"
 url="https://github.com/$REPO/releases/download/v${version}/${archive}"
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT INT TERM
 
+step "Downloading release"
 curl -fsSL "$url" -o "$tmpdir/$archive"
+done_step "$archive"
+
+step "Unpacking archive"
 tar -xzf "$tmpdir/$archive" -C "$tmpdir"
 
 archive_dir="$tmpdir/bindfinder-${version}-${target}"
@@ -209,14 +243,21 @@ if [ ! -d "$archive_dir" ]; then
   echo "bindfinder installer: archive layout was not recognized" >&2
   exit 1
 fi
+done_step "$archive_dir"
 
+step "Installing files"
 mkdir -p "$BIN_DIR" "$MAN_DIR"
 install_file "$archive_dir/bindfinder" "$BIN_DIR/bindfinder" 0755
 
 if [ -f "$archive_dir/man/man1/bindfinder.1" ]; then
   install_file "$archive_dir/man/man1/bindfinder.1" "$MAN_DIR/bindfinder.1" 0644
 fi
+done_step "binary -> $BIN_DIR/bindfinder"
+if [ -f "$MAN_DIR/bindfinder.1" ]; then
+  done_step "man page -> $MAN_DIR/bindfinder.1"
+fi
 
+step "Verifying install"
 if ! "$BIN_DIR/bindfinder" --version >/dev/null 2>&1; then
   rm -f "$BIN_DIR/bindfinder"
   rm -f "$MAN_DIR/bindfinder.1"
@@ -224,6 +265,7 @@ if ! "$BIN_DIR/bindfinder" --version >/dev/null 2>&1; then
   echo "Use 'cargo install --git https://github.com/$REPO' on this platform for now." >&2
   exit 1
 fi
+done_step "binary starts correctly"
 
 if [ "$SETUP" -eq 1 ]; then
   setup_target="$(detect_setup_target)"
@@ -231,34 +273,34 @@ if [ "$SETUP" -eq 1 ]; then
 fi
 
 echo
-echo "bindfinder installed"
+say "bindfinder installed"
 if path_contains_dir "$BIN_DIR"; then
   :
 else
-  echo "Add $BIN_DIR to your PATH, then run bindfinder."
+  say "Add $BIN_DIR to your PATH, then run bindfinder."
   exit 0
 fi
 if [ "$SETUP" -eq 1 ]; then
-  echo "Run bindfinder or use your installed shortcut."
+  say "Run bindfinder or use your installed shortcut."
 else
-  echo "Run bindfinder config init"
-  echo "Run bindfinder install auto --write"
+  say "Run bindfinder config init"
+  say "Run bindfinder install auto --write"
 fi
 shortcut_hint="$(default_shortcut_hint "${setup_target:-}")"
 if [ -n "$shortcut_hint" ]; then
-  echo "Default shortcut: $shortcut_hint"
+  say "Default shortcut: $shortcut_hint"
 fi
-echo "More info: bindfinder --help"
-echo "Docs: https://github.com/$REPO/tree/main/docs"
+say "More info: bindfinder --help"
+say "Docs: https://github.com/$REPO/tree/main/docs"
 if [ "$SETUP" -eq 1 ]; then
   reload_cmd="$(shell_reload_command)"
   tmux_cmd="$(tmux_reload_command)"
   if [ -n "$tmux_cmd" ]; then
-    echo "Reload tmux now: $tmux_cmd"
+    say "Reload tmux now: $tmux_cmd"
   fi
   if [ -n "$reload_cmd" ]; then
-    echo "Reload your shell now: $reload_cmd"
+    say "Reload your shell now: $reload_cmd"
   else
-    echo "Reload your current shell session now."
+    say "Reload your current shell session now."
   fi
 fi
