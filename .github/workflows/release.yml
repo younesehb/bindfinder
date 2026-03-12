@@ -56,4 +56,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/bindfinder-*.tar.gz
+          files: |
+            dist/bindfinder-*.tar.gz
+            install.sh

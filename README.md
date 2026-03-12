@@ -13,7 +13,7 @@ asks for them in the TUI before inserting the final command.
 Recommended:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
 ```
 
 That installs the binary, installs the man page, writes the default config, and

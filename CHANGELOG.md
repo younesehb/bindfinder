@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 - 2026-03-13
+
+- publish `install.sh` as a release asset
+- switch README and install docs to the stable `releases/latest/download/install.sh` URL
+- avoid installer drift between `main` and the latest tagged release
+
 ## 0.1.4 - 2026-03-13
 
 - switch Linux release artifacts to `x86_64-unknown-linux-musl` for better portability across hosts with older glibc

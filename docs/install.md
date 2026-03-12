@@ -17,7 +17,7 @@ Current supported install paths:
 Install the latest release into `~/.local`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
 ```
 
 The installer:
@@ -33,9 +33,9 @@ The installer:
 Useful overrides:
 
 ```bash
-BINDFINDER_VERSION=0.1.4 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
-BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
-curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh -s -- --no-setup
+BINDFINDER_VERSION=0.1.5 curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
+BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh -s -- --no-setup
 ```
 
 If your shell does not already include `~/.local/bin` on `PATH`, add it first.

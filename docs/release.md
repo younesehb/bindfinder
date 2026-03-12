@@ -2,7 +2,7 @@
 
 ## Version
 
-Current version: `0.1.4`
+Current version: `0.1.5`
 
 ## Targets
 
@@ -17,6 +17,12 @@ this repository.
 
 The workflow is in [.github/workflows/release.yml](../.github/workflows/release.yml)
 and runs on version tags such as `v0.1.0`.
+
+Each tagged release now uploads:
+
+- `install.sh`
+- the Linux archive
+- the macOS archive
 
 For Homebrew, the repository also ships a formula in
 [Formula/bindfinder.rb](../Formula/bindfinder.rb). It can be used from a
@@ -42,10 +48,10 @@ cargo build --release
 Package a Linux release tarball locally:
 
 ```bash
-mkdir -p dist/bindfinder-0.1.4-x86_64-unknown-linux-musl
-cp target/release/bindfinder dist/bindfinder-0.1.4-x86_64-unknown-linux-musl/
-cp README.md LICENSE CHANGELOG.md dist/bindfinder-0.1.4-x86_64-unknown-linux-musl/
-tar -C dist -czf dist/bindfinder-0.1.4-x86_64-unknown-linux-musl.tar.gz bindfinder-0.1.4-x86_64-unknown-linux-musl
+mkdir -p dist/bindfinder-0.1.5-x86_64-unknown-linux-musl
+cp target/release/bindfinder dist/bindfinder-0.1.5-x86_64-unknown-linux-musl/
+cp README.md LICENSE CHANGELOG.md install.sh dist/bindfinder-0.1.5-x86_64-unknown-linux-musl/
+tar -C dist -czf dist/bindfinder-0.1.5-x86_64-unknown-linux-musl.tar.gz bindfinder-0.1.5-x86_64-unknown-linux-musl
 ```
 
 ## Publish Gap
