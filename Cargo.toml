@@ -1,6 +1,6 @@
 [package]
 name = "bindfinder"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Terminal-first command reference browser for SSH and tmux workflows"
 license = "MIT"

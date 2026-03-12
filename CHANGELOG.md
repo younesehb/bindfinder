@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1 - 2026-03-12
+
+- add favorites, hidden items, and favorites-only filtering
+- make TUI start in search mode with configurable normal/search bindings
+- add navi repository import support
+- add tmux command reinjection and optional debug logging
+- add shipped man page and `bindfinder install man --write`
+- add platform-aware Linux/macOS paths, Homebrew formula, and GitHub Actions CI/release workflows
+- simplify the README and move detailed usage into `docs/`
+
 ## 0.1.0 - 2026-03-12
 
 Initial release of `bindfinder`.
