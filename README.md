@@ -56,6 +56,8 @@ Useful commands:
 ```bash
 bindfinder doctor
 bindfinder reload
+bindfinder update
+bindfinder update --check
 bindfinder uninstall
 bindfinder uninstall --purge-data
 bindfinder install all --write
@@ -68,6 +70,7 @@ Shell helpers:
 
 - typing `bindfinder` with no arguments in an interactive shell now uses the shell-integrated picker path
 - `bindfinder doctor` and other subcommands still go to the real binary
+- `bindfinder update` installs the latest released version
 - `bf` is kept as a short alias for the same shell-integrated path
 - the shell keybinding gives the best live in-prompt insertion flow
 

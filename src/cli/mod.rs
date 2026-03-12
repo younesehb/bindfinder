@@ -23,7 +23,7 @@ use crate::{
     },
     paths,
     state::UserState,
-    tui,
+    tui, update,
 };
 
 #[derive(Debug, Parser)]
@@ -32,7 +32,7 @@ use crate::{
     version,
     about = "Terminal-first command reference browser",
     long_about = "bindfinder is a terminal-first command reference browser for SSH, tmux, and shell-heavy workflows.\n\nRun it with no subcommand to open the TUI. The TUI starts in search mode so you can type immediately. Press Esc to enter normal mode for vim-style actions, and / to return to search mode.\n\nUse subcommands to inspect config paths, validate packs, print integration snippets, and search packs from the command line.",
-    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config init\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
+    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder update\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config init\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
 )]
 struct Args {
     #[command(subcommand)]
@@ -51,6 +51,8 @@ enum Command {
     Reload,
     /// Detect the current environment and show the recommended integration
     Doctor,
+    /// Check for a newer release or update to it
+    Update(UpdateArgs),
     /// Search packs from the command line
     Search(SearchArgs),
     /// List discovered tools or important paths
@@ -108,6 +110,16 @@ struct InstallArgs {
 struct SearchArgs {
     #[arg(required = true, help = "Search terms to match against loaded entries")]
     query: Vec<String>,
+}
+
+#[derive(Debug, ClapArgs)]
+#[command(
+    about = "Check for a newer release or update to it",
+    long_about = "Check for a newer bindfinder release on GitHub. By default this command installs the latest release when one is available. Pass --check to only report the current status."
+)]
+struct UpdateArgs {
+    #[arg(long, help = "Only check whether a newer release exists")]
+    check: bool,
 }
 
 #[derive(Debug, ClapArgs)]
@@ -375,6 +387,37 @@ pub fn run() -> Result<()> {
             let config = AppConfig::load()?;
             let env = EnvironmentInfo::detect();
             println!("{}", render_doctor(&config, &env));
+            Ok(())
+        }
+        Some(Command::Update(args)) => {
+            let current = env!("CARGO_PKG_VERSION");
+            if args.check {
+                match update::check_now(current)? {
+                    Some(info) => {
+                        println!(
+                            "update available: {} -> {}\nrun: bindfinder update\nrelease: {}",
+                            info.current_version, info.latest_version, info.release_url
+                        );
+                    }
+                    None => {
+                        println!("bindfinder is up to date ({current})");
+                    }
+                }
+                return Ok(());
+            }
+
+            match update::perform_update(current)? {
+                Some(info) => {
+                    println!(
+                        "updated bindfinder: {} -> {}",
+                        info.current_version, info.latest_version
+                    );
+                    println!("run: bindfinder reload");
+                }
+                None => {
+                    println!("bindfinder is up to date ({current})");
+                }
+            }
             Ok(())
         }
         Some(Command::Search(args)) => {

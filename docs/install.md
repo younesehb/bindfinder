@@ -51,6 +51,18 @@ After changing integration-related config later, you can re-apply it with:
 bindfinder reload
 ```
 
+To update to the latest released version:
+
+```bash
+bindfinder update
+```
+
+To only check whether a newer version exists:
+
+```bash
+bindfinder update --check
+```
+
 To write both shell and tmux integration blocks explicitly:
 
 ```bash

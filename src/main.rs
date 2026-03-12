@@ -5,6 +5,7 @@ mod integration;
 mod paths;
 mod state;
 mod tui;
+mod update;
 
 use anyhow::Result;
 

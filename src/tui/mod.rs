@@ -19,6 +19,7 @@ use crate::{
     config::AppConfig,
     core::catalog::{Catalog, CatalogEntry},
     state::UserState,
+    update::UpdateInfo,
 };
 
 pub fn run() -> Result<()> {
@@ -31,8 +32,9 @@ pub fn run() -> Result<()> {
     let catalog = Catalog::load_all()?;
     let config = AppConfig::load()?;
     let state = UserState::load().unwrap_or_default();
+    let update_notice = crate::update::cached_or_fetch(env!("CARGO_PKG_VERSION"));
 
-    let result = run_app(&mut terminal, catalog, config, state);
+    let result = run_app(&mut terminal, catalog, config, state, update_notice);
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -55,8 +57,9 @@ fn run_app(
     catalog: Catalog,
     config: AppConfig,
     state: UserState,
+    update_notice: Option<UpdateInfo>,
 ) -> Result<Option<String>> {
-    let mut app = App::new(catalog, config, state);
+    let mut app = App::new(catalog, config, state, update_notice);
 
     loop {
         terminal.draw(|frame| {
@@ -120,12 +123,23 @@ fn run_app(
                 let result_count = app.filtered.len();
                 let hidden_flag = if app.show_hidden { "  [hidden visible]" } else { "" };
                 let favorites_flag = if app.favorites_only { "  [favorites only]" } else { "" };
+                let update_flag = app
+                    .update_notice
+                    .as_ref()
+                    .map(|info| {
+                        format!(
+                            "  [update {} -> {}: bindfinder update]",
+                            info.current_version, info.latest_version
+                        )
+                    })
+                    .unwrap_or_default();
                 let title = format!(
-                    "bindfinder  {} entries  {} matches{}{}",
+                    "bindfinder  {} entries  {} matches{}{}{}",
                     app.catalog.len(),
                     result_count,
                     hidden_flag,
-                    favorites_flag
+                    favorites_flag,
+                    update_flag
                 );
 
                 let prefix = match app.input_mode {
@@ -177,6 +191,14 @@ fn run_app(
                         }
                         InputMode::Arguments => "",
                     };
+                    let footer = if let Some(info) = app.update_notice.as_ref() {
+                        format!(
+                            "{}  Update available: {} -> {}. Run `bindfinder update`",
+                            footer, info.current_version, info.latest_version
+                        )
+                    } else {
+                        footer.to_string()
+                    };
                     frame.render_widget(Paragraph::new(footer), areas[2]);
                 }
             }
@@ -211,6 +233,7 @@ struct App {
     show_hidden: bool,
     favorites_only: bool,
     argument_prompt: Option<ArgumentPrompt>,
+    update_notice: Option<UpdateInfo>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -242,7 +265,12 @@ enum CommandPart {
 }
 
 impl App {
-    fn new(catalog: Catalog, config: AppConfig, state: UserState) -> Self {
+    fn new(
+        catalog: Catalog,
+        config: AppConfig,
+        state: UserState,
+        update_notice: Option<UpdateInfo>,
+    ) -> Self {
         let mut app = Self {
             config,
             catalog,
@@ -255,6 +283,7 @@ impl App {
             show_hidden: false,
             favorites_only: false,
             argument_prompt: None,
+            update_notice,
         };
         app.refresh();
         app
@@ -916,7 +945,12 @@ mod tests {
 
     #[test]
     fn app_starts_in_search_mode_and_types_immediately() {
-        let mut app = App::new(sample_catalog(), AppConfig::default(), UserState::default());
+        let mut app = App::new(
+            sample_catalog(),
+            AppConfig::default(),
+            UserState::default(),
+            None,
+        );
         assert_eq!(app.input_mode, InputMode::Search);
 
         let result = app.handle_key(KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE));
@@ -958,7 +992,7 @@ mod tests {
         }])
         .expect("catalog should build");
 
-        let mut app = App::new(catalog, AppConfig::default(), UserState::default());
+        let mut app = App::new(catalog, AppConfig::default(), UserState::default(), None);
         let result = app.selected_output();
 
         assert!(result.is_none());
@@ -1001,7 +1035,7 @@ mod tests {
         }])
         .expect("catalog should build");
 
-        let mut app = App::new(catalog, AppConfig::default(), UserState::default());
+        let mut app = App::new(catalog, AppConfig::default(), UserState::default(), None);
         assert!(app.selected_output().is_none());
 
         let prompt = app
@@ -1043,7 +1077,7 @@ mod tests {
         }])
         .expect("catalog should build");
 
-        let mut app = App::new(catalog, AppConfig::default(), UserState::default());
+        let mut app = App::new(catalog, AppConfig::default(), UserState::default(), None);
         app.input_mode = InputMode::Normal;
         assert!(app.selected_output().is_none());
         assert_eq!(app.input_mode, InputMode::Arguments);

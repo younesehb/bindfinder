@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.10 - 2026-03-13
+
+- add cached GitHub release checks and show an update notice in the TUI when a newer version exists
+- add `bindfinder update` and `bindfinder update --check`
+- document the update flow in the README and install docs
+
 ## 0.1.9 - 2026-03-13
 
 - fix the GitHub release workflow so both Linux and macOS assets upload reliably from one final release job
