@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9 - 2026-03-13
+
+- fix the GitHub release workflow so both Linux and macOS assets upload reliably from one final release job
+- avoid parallel tag jobs racing while creating and finalizing the same GitHub release
+
 ## 0.1.8 - 2026-03-13
 
 - make the installer import `denisidoro/cheats` by default when `git` is available
