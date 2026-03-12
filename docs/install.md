@@ -8,7 +8,7 @@ Current supported install paths:
 
 - `curl | sh` installer from GitHub
 - `cargo install`
-- Homebrew from a local checkout
+- Homebrew from a formula
 - prebuilt release tarballs from GitHub Releases
 - local man page install with `bindfinder install man --write`
 
@@ -121,8 +121,7 @@ A Homebrew formula is shipped in:
 Formula/bindfinder.rb
 ```
 
-Because the repository is still private, the formula is currently intended for
-local use from a checked-out copy of the repository:
+You can install from a checked-out copy of the repository:
 
 ```bash
 brew install --build-from-source ./Formula/bindfinder.rb
@@ -130,8 +129,7 @@ brew install --build-from-source ./Formula/bindfinder.rb
 
 That installs the binary and the shipped man page.
 
-Once the repository is public, you can move this formula into a tap repository
-or keep it in this repository and document one of these flows:
+You can also use the formula directly from GitHub:
 
 ```bash
 brew tap younesehb/bindfinder https://github.com/younesehb/bindfinder

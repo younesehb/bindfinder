@@ -19,10 +19,9 @@ The workflow is in [.github/workflows/release.yml](../.github/workflows/release.
 and runs on version tags such as `v0.1.0`.
 
 For Homebrew, the repository also ships a formula in
-[Formula/bindfinder.rb](../Formula/bindfinder.rb). While the repository is
-private, that formula is mainly for local installs from a checked-out copy of
-the repo. Once the repository is public, it can be moved into a tap or used
-directly from the repository.
+[Formula/bindfinder.rb](../Formula/bindfinder.rb). It can be used from a
+checked-out copy of the repo, moved into a tap, or referenced directly from the
+repository.
 
 ## Local Release Steps
 
@@ -52,4 +51,4 @@ tar -C dist -czf dist/bindfinder-0.1.3-x86_64-unknown-linux-gnu.tar.gz bindfinde
 ## Publish Gap
 
 GitHub Releases are now expected to be published by the release workflow on tag
-push. Local manual packaging is still useful for smoke tests and private builds.
+push. Local manual packaging is still useful for smoke tests and one-off builds.
