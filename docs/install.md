@@ -33,7 +33,7 @@ The installer:
 Useful overrides:
 
 ```bash
-BINDFINDER_VERSION=0.1.2 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+BINDFINDER_VERSION=0.1.3 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh -s -- --no-setup
 ```
@@ -65,6 +65,20 @@ With the shell integration loaded:
 - `bindfinder` with no arguments uses the shell-integrated picker path
 - `bindfinder ...subcommand...` still calls the real binary
 - `bf` is a short alias for the shell-integrated picker path
+
+## Uninstall
+
+Remove the installed binary, man page, and managed shell/tmux blocks:
+
+```bash
+bindfinder uninstall
+```
+
+Also remove local config, state, packs, imported repos, and cache files:
+
+```bash
+bindfinder uninstall --purge-data
+```
 
 ## Cargo
 

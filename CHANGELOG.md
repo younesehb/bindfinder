@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 - 2026-03-12
+
+- add `bindfinder uninstall` to remove installed files and managed integration blocks
+- add `bindfinder uninstall --purge-data` to remove local config, state, packs, repos, and cache files
+- document install and uninstall more clearly
+
 ## 0.1.2 - 2026-03-12
 
 - add in-TUI argument prompts for commands with placeholders like `<branch>` or `<package>`

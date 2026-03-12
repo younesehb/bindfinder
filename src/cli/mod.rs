@@ -16,9 +16,9 @@ use crate::{
     integration::{
         detect::EnvironmentInfo,
         install::{
-            default_install_path, default_man_install_path, explicit_target, render_auto_install,
-            render_doctor, render_install_for_target, render_man_page, write_install_block,
-            write_plain_file,
+            default_install_path, default_man_install_path, explicit_target, remove_install_block,
+            render_auto_install, render_doctor, render_install_for_target, render_man_page,
+            write_install_block, write_plain_file,
         },
     },
     paths,
@@ -45,6 +45,8 @@ enum Command {
     Config(ConfigArgs),
     /// Print an integration snippet for a target
     Install(InstallArgs),
+    /// Remove bindfinder integrations and installed files
+    Uninstall(UninstallArgs),
     /// Re-apply the detected integration and reload tmux when possible
     Reload,
     /// Detect the current environment and show the recommended integration
@@ -106,6 +108,19 @@ struct InstallArgs {
 struct SearchArgs {
     #[arg(required = true, help = "Search terms to match against loaded entries")]
     query: Vec<String>,
+}
+
+#[derive(Debug, ClapArgs)]
+#[command(
+    about = "Remove bindfinder integrations and installed files",
+    long_about = "Remove bindfinder-managed shell/tmux blocks and installed files.\n\nBy default this removes the binary, man page, and managed integration blocks. Pass --purge-data to also remove user config, state, packs, repos, and cache files."
+)]
+struct UninstallArgs {
+    #[arg(
+        long,
+        help = "Also remove config, state, packs, repos, and cache files"
+    )]
+    purge_data: bool,
 }
 
 #[derive(Debug, ClapArgs)]
@@ -256,6 +271,63 @@ pub fn run() -> Result<()> {
                 }
                 Ok(())
             }
+        }
+        Some(Command::Uninstall(args)) => {
+            let config = AppConfig::load().unwrap_or_default();
+            let env = EnvironmentInfo::detect();
+            let mut removed_any = false;
+
+            for target in collect_supported_uninstall_targets(&env, &config) {
+                if let Some(path) = default_install_path(&target) {
+                    if remove_install_block(&path)? {
+                        println!("removed integration block: {}", path.display());
+                        removed_any = true;
+                    }
+                }
+            }
+
+            if let Some(bin_root) = paths::home_dir().map(|home| home.join(".local").join("bin")) {
+                let binary = bin_root.join("bindfinder");
+                if binary.exists() {
+                    fs::remove_file(&binary)
+                        .with_context(|| format!("failed to remove {}", binary.display()))?;
+                    println!("removed binary: {}", binary.display());
+                    removed_any = true;
+                }
+            }
+
+            if let Some(path) = default_man_install_path() {
+                if path.exists() {
+                    fs::remove_file(&path)
+                        .with_context(|| format!("failed to remove {}", path.display()))?;
+                    println!("removed man page: {}", path.display());
+                    removed_any = true;
+                }
+            }
+
+            if args.purge_data {
+                for path in uninstall_data_paths() {
+                    if path.exists() {
+                        if path.is_dir() {
+                            fs::remove_dir_all(&path).with_context(|| {
+                                format!("failed to remove directory {}", path.display())
+                            })?;
+                        } else {
+                            fs::remove_file(&path).with_context(|| {
+                                format!("failed to remove file {}", path.display())
+                            })?;
+                        }
+                        println!("removed data: {}", path.display());
+                        removed_any = true;
+                    }
+                }
+            }
+
+            if !removed_any {
+                println!("nothing to remove");
+            }
+
+            Ok(())
         }
         Some(Command::Reload) => {
             let config = AppConfig::load()?;
@@ -564,6 +636,72 @@ fn shell_reload_hint(
         }
         crate::integration::detect::ShellKind::Unknown(_) => format!("source {}", path.display()),
     }
+}
+
+fn collect_supported_uninstall_targets(
+    env: &EnvironmentInfo,
+    config: &AppConfig,
+) -> Vec<crate::integration::detect::IntegrationTarget> {
+    let mut targets = collect_applicable_targets(env, config);
+    for fallback in [
+        crate::integration::detect::IntegrationTarget::Tmux,
+        crate::integration::detect::IntegrationTarget::Shell(
+            crate::integration::detect::ShellKind::Bash,
+        ),
+        crate::integration::detect::IntegrationTarget::Shell(
+            crate::integration::detect::ShellKind::Zsh,
+        ),
+        crate::integration::detect::IntegrationTarget::Shell(
+            crate::integration::detect::ShellKind::Fish,
+        ),
+    ] {
+        if !targets
+            .iter()
+            .any(|target| same_target_kind(target, &fallback))
+        {
+            targets.push(fallback);
+        }
+    }
+    targets
+}
+
+fn same_target_kind(
+    left: &crate::integration::detect::IntegrationTarget,
+    right: &crate::integration::detect::IntegrationTarget,
+) -> bool {
+    match (left, right) {
+        (
+            crate::integration::detect::IntegrationTarget::Tmux,
+            crate::integration::detect::IntegrationTarget::Tmux,
+        ) => true,
+        (
+            crate::integration::detect::IntegrationTarget::Shell(left),
+            crate::integration::detect::IntegrationTarget::Shell(right),
+        ) => std::mem::discriminant(left) == std::mem::discriminant(right),
+        _ => false,
+    }
+}
+
+fn uninstall_data_paths() -> Vec<PathBuf> {
+    let mut paths_to_remove = Vec::new();
+
+    if let Some(path) = AppConfig::default_path() {
+        paths_to_remove.push(path);
+    }
+    if let Some(path) = crate::state::default_path() {
+        paths_to_remove.push(path);
+    }
+    if let Some(path) = Catalog::default_pack_dir() {
+        paths_to_remove.push(path);
+    }
+    if let Some(path) = Catalog::default_navi_repo_dir() {
+        paths_to_remove.push(path);
+    }
+    if let Some(path) = paths::bindfinder_cache_file("tmux-capture.log") {
+        paths_to_remove.push(path);
+    }
+
+    paths_to_remove
 }
 
 fn collect_applicable_targets(

@@ -104,7 +104,7 @@ impl UserState {
     }
 }
 
-fn default_path() -> Option<PathBuf> {
+pub fn default_path() -> Option<PathBuf> {
     if let Ok(path) = env::var("BINDFINDER_STATE") {
         let path = PathBuf::from(path);
         if !path.as_os_str().is_empty() {

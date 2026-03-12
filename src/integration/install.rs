@@ -188,6 +188,21 @@ pub fn write_install_block(path: &Path, snippet: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn remove_install_block(path: &Path) -> Result<bool> {
+    let existing = match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(err) => return Err(err).with_context(|| format!("failed to read {}", path.display())),
+    };
+
+    let Some(updated) = remove_managed_block(&existing) else {
+        return Ok(false);
+    };
+
+    fs::write(path, updated).with_context(|| format!("failed to write {}", path.display()))?;
+    Ok(true)
+}
+
 fn managed_block(snippet: &str) -> String {
     format!("{START_MARKER}\n{snippet}\n{END_MARKER}\n")
 }
@@ -222,6 +237,33 @@ fn replace_or_append_managed_block(existing: &str, managed: &str) -> String {
     }
     output.push_str(managed);
     output
+}
+
+fn remove_managed_block(existing: &str) -> Option<String> {
+    let start = existing.find(START_MARKER)?;
+    let end_rel = existing[start..].find(END_MARKER)?;
+    let end = start + end_rel + END_MARKER.len();
+
+    let before = existing[..start].trim_end_matches('\n');
+    let after = existing[end..].trim_start_matches('\n');
+
+    let mut output = String::new();
+    if !before.is_empty() {
+        output.push_str(before);
+    }
+    if !before.is_empty() && !after.is_empty() {
+        output.push_str("\n\n");
+    }
+    if !after.is_empty() {
+        output.push_str(after);
+        if !output.ends_with('\n') {
+            output.push('\n');
+        }
+    } else if !output.is_empty() && !output.ends_with('\n') {
+        output.push('\n');
+    }
+
+    Some(output)
 }
 
 fn format_shell(shell: &ShellKind) -> String {
