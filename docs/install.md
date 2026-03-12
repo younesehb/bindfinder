@@ -24,15 +24,19 @@ The installer:
 - downloads the matching release archive from GitHub
 - installs `bindfinder` into `~/.local/bin`
 - installs the man page into `~/.local/share/man/man1`
+- writes the default config with `bindfinder config init`
+- installs the recommended shell or tmux integration with `bindfinder install auto --write`
 
 Useful overrides:
 
 ```bash
 BINDFINDER_VERSION=0.1.1 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh -s -- --no-setup
 ```
 
 If your shell does not already include `~/.local/bin` on `PATH`, add it first.
+After setup, reload your shell or tmux config once.
 
 ## Cargo
 

@@ -6,6 +6,7 @@ VERSION="${BINDFINDER_VERSION:-latest}"
 INSTALL_ROOT="${BINDFINDER_INSTALL_ROOT:-$HOME/.local}"
 BIN_DIR="${BINDFINDER_BIN_DIR:-$INSTALL_ROOT/bin}"
 MAN_DIR="${BINDFINDER_MAN_DIR:-$INSTALL_ROOT/share/man/man1}"
+SETUP=1
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -13,6 +14,37 @@ need_cmd() {
     exit 1
   }
 }
+
+usage() {
+  cat <<'EOF'
+bindfinder installer
+
+Usage:
+  sh install.sh [--no-setup]
+
+Options:
+  --no-setup   install the binary and man page only
+  --help       show this help text
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-setup)
+      SETUP=0
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "bindfinder installer: unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
 
 detect_target() {
   os="$(uname -s)"
@@ -112,6 +144,12 @@ if [ -f "$archive_dir/man/man1/bindfinder.1" ]; then
   install_file "$archive_dir/man/man1/bindfinder.1" "$MAN_DIR/bindfinder.1" 0644
 fi
 
+if [ "$SETUP" -eq 1 ]; then
+  echo "Running first-time setup..."
+  "$BIN_DIR/bindfinder" config init
+  "$BIN_DIR/bindfinder" install auto --write
+fi
+
 echo
 echo "Installed:"
 echo "  binary: $BIN_DIR/bindfinder"
@@ -119,5 +157,10 @@ echo "  man:    $MAN_DIR/bindfinder.1"
 echo
 echo "Next steps:"
 echo "  1. Ensure $BIN_DIR is on your PATH"
-echo "  2. Run: bindfinder config init"
-echo "  3. Run: bindfinder install auto --write"
+if [ "$SETUP" -eq 1 ]; then
+  echo "  2. Reload your shell or tmux config once"
+  echo "  3. Run: bindfinder"
+else
+  echo "  2. Run: bindfinder config init"
+  echo "  3. Run: bindfinder install auto --write"
+fi

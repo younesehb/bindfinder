@@ -12,6 +12,9 @@ Recommended:
 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 ```
 
+That installs the binary, installs the man page, writes the default config, and
+installs the recommended shell or tmux integration automatically.
+
 From source:
 
 ```bash
@@ -60,5 +63,5 @@ bindfinder navi import denisidoro/cheats
 - Linux and macOS are supported.
 - Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
 - `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
-- The installer script downloads release artifacts from GitHub and installs into `~/.local` by default.
+- The installer script downloads release artifacts from GitHub, installs into `~/.local` by default, and runs first-time setup unless `--no-setup` is used.
 - The repository ships a Homebrew formula in [Formula/bindfinder.rb](./Formula/bindfinder.rb).
