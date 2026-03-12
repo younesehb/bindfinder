@@ -27,6 +27,8 @@ In the current implementation, the installed tmux binding calls the internal
 
 ## Default Binding
 
+The tmux config stores only the key after your prefix.
+
 The default tmux key is:
 
 ```tmux
