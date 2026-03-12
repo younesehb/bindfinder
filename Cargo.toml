@@ -1,6 +1,6 @@
 [package]
 name = "bindfinder"
-version = "0.1.11"
+version = "0.1.12"
 edition = "2021"
 description = "Terminal command palette for commands and keybindings"
 license = "MIT"

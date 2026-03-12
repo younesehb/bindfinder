@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.12 - 2026-03-13
+
+- add `bindfinder config validate` for explicit config checks
+- make invalid config errors show the config path and exact failing field more clearly
+- make `bindfinder doctor` concise by default and move the full generated snippet behind `--snippet`
+
 ## 0.1.11 - 2026-03-13
 
 - change the default shell launcher key to `Ctrl-]`
