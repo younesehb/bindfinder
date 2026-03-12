@@ -43,10 +43,10 @@ keybindings:
 
 integration:
   mode: "auto"
-  launch_key: "alt-/"
+  launch_key: "ctrl-]"
   tmux:
     enabled: true
-    key: "/"
+    key: "C-]"
     use_popup: false
     popup_width: "80%"
     popup_height: "80%"
@@ -54,7 +54,7 @@ integration:
   shell:
     enabled: true
     preferred: "auto"
-    binding: "alt-/"
+    binding: "ctrl-]"
   terminal:
     enabled: false
     preferred: "auto"

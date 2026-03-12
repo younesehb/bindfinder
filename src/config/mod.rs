@@ -703,11 +703,11 @@ fn default_true() -> bool {
 }
 
 fn default_launch_key() -> String {
-    "alt-/".to_string()
+    "ctrl-]".to_string()
 }
 
 fn default_tmux_key() -> String {
-    "/".to_string()
+    "C-]".to_string()
 }
 
 fn default_popup_width() -> String {
@@ -760,7 +760,7 @@ keybindings:
   hide_entry: ["o"]
 integration:
   mode: "tmux"
-  launch_key: "alt-/"
+  launch_key: "ctrl-]"
   tmux:
     key: "?"
     use_popup: false
@@ -780,7 +780,7 @@ integration:
         assert!(!config.settings.show_footer);
         assert!(!config.settings.wrap_preview);
         assert_eq!(config.integration.mode, IntegrationMode::Tmux);
-        assert_eq!(config.integration.launch_key, "alt-/");
+        assert_eq!(config.integration.launch_key, "ctrl-]");
         assert_eq!(config.integration.tmux.key, "?");
         assert!(!config.integration.tmux.use_popup);
         assert!(config.integration.tmux.debug);
@@ -801,7 +801,7 @@ integration:
             .to_yaml_string()
             .expect("default config should serialize");
         assert!(yaml.contains("integration:"));
-        assert!(yaml.contains("launch_key: alt-/"));
+        assert!(yaml.contains("launch_key: ctrl-]"));
     }
 
     #[test]

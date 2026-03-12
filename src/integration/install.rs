@@ -488,12 +488,12 @@ mod tests {
     }
 
     #[test]
-    fn renders_alt_slash_shell_bindings() {
-        assert_eq!(bash_binding("alt-/"), "\\e/");
-        assert_eq!(ble_bash_binding("alt-/"), "M-/");
-        assert_eq!(zsh_binding("alt-/"), "^[/");
-        assert_eq!(fish_binding("alt-/"), "\\e/");
-        assert_eq!(terminal_binding_key("alt-/"), None);
+    fn renders_ctrl_close_bracket_shell_bindings() {
+        assert_eq!(bash_binding("ctrl-]"), "\\C-]");
+        assert_eq!(ble_bash_binding("ctrl-]"), "C-]");
+        assert_eq!(zsh_binding("ctrl-]"), "^]");
+        assert_eq!(fish_binding("ctrl-]"), "\\c]");
+        assert_eq!(terminal_binding_key("ctrl-]"), Some("]".to_string()));
     }
 
     #[test]

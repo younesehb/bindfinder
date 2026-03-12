@@ -30,13 +30,13 @@ In the current implementation, the installed tmux binding calls the internal
 The default tmux key is:
 
 ```tmux
-prefix + /
+prefix + C-]
 ```
 
 If your tmux prefix is `C-a`, that means:
 
 ```text
-Ctrl-a /
+Ctrl-a Ctrl-]
 ```
 
 ## Split Mode (Default)
@@ -44,7 +44,7 @@ Ctrl-a /
 When `integration.tmux.use_popup: false`, the generated binding looks like:
 
 ```tmux
-bind-key / run-shell "/home/USER/.local/bin/bindfinder tmux-launch"
+bind-key C-] run-shell "/home/USER/.local/bin/bindfinder tmux-launch"
 ```
 
 The `tmux-launch` subcommand opens a vertical split sized for the TUI and then

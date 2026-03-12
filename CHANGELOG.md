@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.11 - 2026-03-13
+
+- change the default shell launcher key to `Ctrl-]`
+- change the default tmux launcher key to `prefix + Ctrl-]`
+- update the generated config and docs to match the new safer defaults
+
 ## 0.1.10 - 2026-03-13
 
 - add cached GitHub release checks and show an update notice in the TUI when a newer version exists

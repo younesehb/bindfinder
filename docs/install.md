@@ -79,6 +79,8 @@ With the shell integration loaded:
 - `bindfinder` with no arguments uses the shell-integrated picker path
 - `bindfinder ...subcommand...` still calls the real binary
 - `bf` is a short alias for the shell-integrated picker path
+- the default shell binding is `Ctrl-]`
+- the default tmux binding is `prefix + Ctrl-]`
 
 ## Uninstall
 
