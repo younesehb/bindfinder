@@ -135,6 +135,25 @@ detect_setup_target() {
   printf '%s\n' "$targets"
 }
 
+shell_reload_command() {
+  shell_name="$(basename_of "${SHELL:-}")"
+  case "$shell_name" in
+    bash) printf '%s\n' 'source ~/.bashrc' ;;
+    zsh) printf '%s\n' 'source ~/.zshrc' ;;
+    fish) printf '%s\n' 'source ~/.config/fish/config.fish' ;;
+    *) printf '%s\n' '' ;;
+  esac
+}
+
+default_shortcut_hint() {
+  targets="$1"
+  case " $targets " in
+    *" tmux "*) printf '%s\n' 'prefix + / (default tmux shortcut)' ;;
+    *" bash "*|*" zsh "*|*" fish "*) printf '%s\n' 'Alt-/ (default shell shortcut)' ;;
+    *) printf '%s\n' '' ;;
+  esac
+}
+
 run_setup() {
   targets="$1"
 
@@ -213,8 +232,17 @@ else
   echo "Run bindfinder config init"
   echo "Run bindfinder install auto --write"
 fi
+shortcut_hint="$(default_shortcut_hint "${setup_target:-}")"
+if [ -n "$shortcut_hint" ]; then
+  echo "Default shortcut: $shortcut_hint"
+fi
 echo "More info: bindfinder --help"
 echo "Docs: https://github.com/$REPO/tree/main/docs"
 if [ "$SETUP" -eq 1 ]; then
-  echo "If the current shell session does not pick up the integration yet, reload it once."
+  reload_cmd="$(shell_reload_command)"
+  if [ -n "$reload_cmd" ]; then
+    echo "If the current shell session does not pick up the integration yet, run: $reload_cmd"
+  else
+    echo "If the current shell session does not pick up the integration yet, reload it once."
+  fi
 fi

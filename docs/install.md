@@ -33,7 +33,7 @@ The installer:
 Useful overrides:
 
 ```bash
-BINDFINDER_VERSION=0.1.6 curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
+BINDFINDER_VERSION=0.1.7 curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
 BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
 curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh -s -- --no-setup
 ```

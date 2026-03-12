@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7 - 2026-03-13
+
+- make the installer print the default shortcut for the detected shell or tmux setup
+- make the installer print the exact shell reload command when the current session needs it
+- keep post-install guidance short while still pointing users to `bindfinder --help` and the docs
+
 ## 0.1.6 - 2026-03-13
 
 - simplify installer output so it shows only the result and the way to start using `bindfinder`
