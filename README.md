@@ -44,6 +44,7 @@ Useful commands:
 
 ```bash
 bindfinder doctor
+bindfinder reload
 bindfinder search tmux split
 bindfinder install man --write
 bindfinder navi import denisidoro/cheats

@@ -40,6 +40,12 @@ After setup, reload your shell or tmux config once.
 If the installer cannot determine the right shell integration target, it leaves
 the binary installed and prints the follow-up command to run manually.
 
+After changing integration-related config later, you can re-apply it with:
+
+```bash
+bindfinder reload
+```
+
 ## Cargo
 
 If the project is not yet published to crates.io, install directly from GitHub:

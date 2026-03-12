@@ -32,7 +32,7 @@ use crate::{
     version,
     about = "Terminal-first command reference browser",
     long_about = "bindfinder is a terminal-first command reference browser for SSH, tmux, and shell-heavy workflows.\n\nRun it with no subcommand to open the TUI. The TUI starts in search mode so you can type immediately. Press Esc to enter normal mode for vim-style actions, and / to return to search mode.\n\nUse subcommands to inspect config paths, validate packs, print integration snippets, and search packs from the command line.",
-    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder install auto --write\n  bindfinder install man --write\n  bindfinder config init\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
+    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config init\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
 )]
 struct Args {
     #[command(subcommand)]
@@ -45,6 +45,8 @@ enum Command {
     Config(ConfigArgs),
     /// Print an integration snippet for a target
     Install(InstallArgs),
+    /// Re-apply the detected integration and reload tmux when possible
+    Reload,
     /// Detect the current environment and show the recommended integration
     Doctor,
     /// Search packs from the command line
@@ -221,6 +223,52 @@ pub fn run() -> Result<()> {
                 }
                 Ok(())
             }
+        }
+        Some(Command::Reload) => {
+            let config = AppConfig::load()?;
+            let env = EnvironmentInfo::detect();
+            let target = env.choose_target(&config);
+
+            match &target {
+                crate::integration::detect::IntegrationTarget::Plain => {
+                    println!("no reload action for the current environment");
+                    println!("run: bindfinder install auto --write");
+                }
+                crate::integration::detect::IntegrationTarget::Terminal(_) => {
+                    println!("terminal integration is snippet-only");
+                    println!("run: bindfinder install auto");
+                }
+                _ => {
+                    let snippet = render_install_for_target(&config, &target);
+                    let path = default_install_path(&target)
+                        .context("no default install path for this target")?;
+                    write_install_block(&path, &snippet)?;
+
+                    match &target {
+                        crate::integration::detect::IntegrationTarget::Tmux => {
+                            let status = ProcessCommand::new("tmux")
+                                .arg("source-file")
+                                .arg(&path)
+                                .status();
+                            match status {
+                                Ok(status) if status.success() => {
+                                    println!("reloaded tmux config: {}", path.display());
+                                }
+                                Ok(_) | Err(_) => {
+                                    println!("updated tmux config: {}", path.display());
+                                    println!("run: tmux source-file {}", path.display());
+                                }
+                            }
+                        }
+                        crate::integration::detect::IntegrationTarget::Shell(shell) => {
+                            println!("updated shell config: {}", path.display());
+                            println!("reload command: {}", shell_reload_hint(shell, &path));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Ok(())
         }
         Some(Command::Doctor) => {
             let config = AppConfig::load()?;
@@ -473,4 +521,14 @@ fn repo_dir_name(repo: &str) -> String {
     let trimmed = repo.trim_end_matches('/');
     let name = trimmed.rsplit('/').next().unwrap_or(trimmed);
     name.strip_suffix(".git").unwrap_or(name).to_string()
+}
+
+fn shell_reload_hint(shell: &crate::integration::detect::ShellKind, path: &std::path::Path) -> String {
+    match shell {
+        crate::integration::detect::ShellKind::Fish => format!("source {}", path.display()),
+        crate::integration::detect::ShellKind::Bash | crate::integration::detect::ShellKind::Zsh => {
+            format!("source {}", path.display())
+        }
+        crate::integration::detect::ShellKind::Unknown(_) => format!("source {}", path.display()),
+    }
 }
