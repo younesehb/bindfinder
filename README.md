@@ -53,6 +53,7 @@ bindfinder navi import denisidoro/cheats
 - [navi support](./docs/navi.md)
 - [Pack format](./docs/packs.md)
 - [Release process](./docs/release.md)
+- [Contributing](./CONTRIBUTING.md)
 
 ## Notes
 

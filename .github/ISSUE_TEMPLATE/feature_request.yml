@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an improvement to bindfinder
+title: "[feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior you want, not just the implementation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Shell, tmux, SSH, terminal emulator, or workflow details that matter.
