@@ -2,13 +2,13 @@
 
 ## Version
 
-Current version: `0.1.3`
+Current version: `0.1.4`
 
 ## Targets
 
 The project now ships release automation for:
 
-- `x86_64-unknown-linux-gnu`
+- `x86_64-unknown-linux-musl`
 - `aarch64-apple-darwin`
 
 Intel macOS remains installable from source, but is not currently included in
@@ -42,10 +42,10 @@ cargo build --release
 Package a Linux release tarball locally:
 
 ```bash
-mkdir -p dist/bindfinder-0.1.3-x86_64-unknown-linux-gnu
-cp target/release/bindfinder dist/bindfinder-0.1.3-x86_64-unknown-linux-gnu/
-cp README.md LICENSE CHANGELOG.md dist/bindfinder-0.1.3-x86_64-unknown-linux-gnu/
-tar -C dist -czf dist/bindfinder-0.1.3-x86_64-unknown-linux-gnu.tar.gz bindfinder-0.1.3-x86_64-unknown-linux-gnu
+mkdir -p dist/bindfinder-0.1.4-x86_64-unknown-linux-musl
+cp target/release/bindfinder dist/bindfinder-0.1.4-x86_64-unknown-linux-musl/
+cp README.md LICENSE CHANGELOG.md dist/bindfinder-0.1.4-x86_64-unknown-linux-musl/
+tar -C dist -czf dist/bindfinder-0.1.4-x86_64-unknown-linux-musl.tar.gz bindfinder-0.1.4-x86_64-unknown-linux-musl
 ```
 
 ## Publish Gap

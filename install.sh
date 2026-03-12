@@ -51,7 +51,7 @@ detect_target() {
   arch="$(uname -m)"
 
   case "$os" in
-    Linux) os="unknown-linux-gnu" ;;
+    Linux) os="unknown-linux-musl" ;;
     Darwin) os="apple-darwin" ;;
     *)
       echo "bindfinder installer: unsupported operating system: $os" >&2
@@ -71,7 +71,7 @@ detect_target() {
   target="${arch}-${os}"
 
   case "$target" in
-    x86_64-unknown-linux-gnu|aarch64-apple-darwin)
+    x86_64-unknown-linux-musl|aarch64-apple-darwin)
       printf '%s\n' "$target"
       ;;
     *)
@@ -190,6 +190,14 @@ install_file "$archive_dir/bindfinder" "$BIN_DIR/bindfinder" 0755
 
 if [ -f "$archive_dir/man/man1/bindfinder.1" ]; then
   install_file "$archive_dir/man/man1/bindfinder.1" "$MAN_DIR/bindfinder.1" 0644
+fi
+
+if ! "$BIN_DIR/bindfinder" --version >/dev/null 2>&1; then
+  rm -f "$BIN_DIR/bindfinder"
+  rm -f "$MAN_DIR/bindfinder.1"
+  echo "bindfinder installer: installed binary failed to start on this host" >&2
+  echo "Use 'cargo install --git https://github.com/$REPO' on this platform for now." >&2
+  exit 1
 fi
 
 if [ "$SETUP" -eq 1 ]; then

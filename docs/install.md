@@ -33,7 +33,7 @@ The installer:
 Useful overrides:
 
 ```bash
-BINDFINDER_VERSION=0.1.3 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+BINDFINDER_VERSION=0.1.4 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh -s -- --no-setup
 ```
@@ -98,7 +98,7 @@ cargo install bindfinder
 
 Tagged releases ship prebuilt tarballs for:
 
-- Linux `x86_64-unknown-linux-gnu`
+- Linux `x86_64-unknown-linux-musl`
 - macOS `aarch64-apple-darwin`
 
 Intel macOS is still supported through source installs with Cargo or Homebrew,
