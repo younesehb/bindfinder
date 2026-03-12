@@ -1,0 +1,122 @@
+# Installation
+
+`bindfinder` is terminal-only and works on Linux and macOS.
+
+Current supported install paths:
+
+- `cargo install`
+- Homebrew from a local checkout
+- prebuilt release tarballs from GitHub Releases
+- local man page install with `bindfinder install man --write`
+
+## Cargo
+
+If the project is not yet published to crates.io, install directly from GitHub:
+
+```bash
+cargo install --git https://github.com/younesehb/bindfinder
+```
+
+If it is published later, users can switch to:
+
+```bash
+cargo install bindfinder
+```
+
+## Release Tarballs
+
+Tagged releases ship prebuilt tarballs for:
+
+- Linux `x86_64-unknown-linux-gnu`
+- macOS `x86_64-apple-darwin`
+- macOS `aarch64-apple-darwin`
+
+Install by unpacking the archive and placing `bindfinder` somewhere on `PATH`,
+for example:
+
+```bash
+tar -xzf bindfinder-<version>-<target>.tar.gz
+install -m 0755 bindfinder-<version>-<target>/bindfinder ~/.local/bin/bindfinder
+```
+
+## Homebrew
+
+A Homebrew formula is shipped in:
+
+```bash
+Formula/bindfinder.rb
+```
+
+Because the repository is still private, the formula is currently intended for
+local use from a checked-out copy of the repository:
+
+```bash
+brew install --build-from-source ./Formula/bindfinder.rb
+```
+
+That installs the binary and the shipped man page.
+
+Once the repository is public, you can move this formula into a tap repository
+or keep it in this repository and document one of these flows:
+
+```bash
+brew tap younesehb/bindfinder https://github.com/younesehb/bindfinder
+brew install bindfinder
+```
+
+or:
+
+```bash
+brew install --build-from-source https://raw.githubusercontent.com/younesehb/bindfinder/main/Formula/bindfinder.rb
+```
+
+If you want fully bottled Homebrew installs later, the next step is to create a
+dedicated tap repository and attach macOS release artifacts to GitHub Releases.
+
+## Man Page
+
+`cargo install` does not install man pages automatically. `bindfinder` ships a
+man page and can install it itself:
+
+```bash
+bindfinder install man --write
+man bindfinder
+```
+
+Override the destination with:
+
+```bash
+BINDFINDER_MANPAGE_DIR=/custom/man/man1 bindfinder install man --write
+```
+
+## Default Paths
+
+Linux defaults:
+
+- config: `~/.config/bindfinder/config.yaml`
+- state: `~/.config/bindfinder/state.yaml`
+- packs: `~/.config/bindfinder/packs`
+- repos: `~/.local/share/bindfinder/repos`
+- cache log: `~/.cache/bindfinder/tmux-capture.log`
+
+macOS defaults:
+
+- config: `~/Library/Application Support/bindfinder/config.yaml`
+- state: `~/Library/Application Support/bindfinder/state.yaml`
+- packs: `~/Library/Application Support/bindfinder/packs`
+- repos: `~/Library/Application Support/bindfinder/repos`
+- cache log: `~/Library/Caches/bindfinder/tmux-capture.log`
+
+`XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_DATA_HOME`, and the existing
+`BINDFINDER_*` overrides are still respected when set.
+
+## Terminal Integrations
+
+For shell or tmux setup:
+
+```bash
+bindfinder config init
+bindfinder install auto --write
+```
+
+Then reload the relevant shell or tmux config once.

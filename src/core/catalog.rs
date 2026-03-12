@@ -5,7 +5,12 @@ use std::{
 
 use anyhow::{Result, anyhow};
 
-use crate::core::pack::{Entry, Pack, parse_pack_file, parse_pack_str};
+use crate::core::{
+    navi,
+    pack::{Entry, Pack, parse_pack_file, parse_pack_str},
+};
+use crate::paths;
+use crate::state::UserState;
 
 #[derive(Debug, Clone)]
 pub struct Catalog {
@@ -33,12 +38,21 @@ impl Catalog {
                 packs.push(parse_pack_file(&path)?);
             }
         }
+        if let Some(dir) = default_navi_repo_dir() {
+            for repo_dir in discover_repo_dirs(&dir)? {
+                packs.extend(navi::load_repo(&repo_dir)?);
+            }
+        }
 
         Self::from_packs(packs)
     }
 
     pub fn default_pack_dir() -> Option<PathBuf> {
         default_pack_dir()
+    }
+
+    pub fn default_navi_repo_dir() -> Option<PathBuf> {
+        default_navi_repo_dir()
     }
 
     pub fn from_packs(packs: Vec<Pack>) -> Result<Self> {
@@ -75,7 +89,13 @@ impl Catalog {
         Ok(Self { entries })
     }
 
-    pub fn filter<'a>(&'a self, query: &str) -> Vec<&'a CatalogEntry> {
+    pub fn filter_with_state<'a>(
+        &'a self,
+        query: &str,
+        state: &UserState,
+        include_hidden: bool,
+        favorites_only: bool,
+    ) -> Vec<&'a CatalogEntry> {
         let query = query.trim().to_ascii_lowercase();
         let terms = query
             .split_whitespace()
@@ -84,12 +104,21 @@ impl Catalog {
         let mut matches = self
             .entries
             .iter()
+            .filter(|item| {
+                include_hidden
+                    || (!state.is_tool_hidden(&item.tool) && !state.is_entry_hidden(&item.qualified_id()))
+            })
+            .filter(|item| {
+                !favorites_only
+                    || state.is_entry_favorite(&item.qualified_id())
+                    || state.is_tool_favorite(&item.tool)
+            })
             .filter(|item| matches_query(item, &query, &terms))
             .collect::<Vec<_>>();
 
         matches.sort_by_key(|item| {
             (
-                rank(item, &query, &terms),
+                rank(item, &query, &terms, state),
                 item.tool.as_str(),
                 item.entry.title.as_str(),
             )
@@ -118,6 +147,12 @@ impl Catalog {
     }
 }
 
+impl CatalogEntry {
+    pub fn qualified_id(&self) -> String {
+        format!("{}:{}", self.pack_id, self.entry.id)
+    }
+}
+
 fn matches_query(item: &CatalogEntry, query: &str, terms: &[&str]) -> bool {
     if query.is_empty() {
         return true;
@@ -127,77 +162,67 @@ fn matches_query(item: &CatalogEntry, query: &str, terms: &[&str]) -> bool {
     terms.iter().all(|term| blob.contains(term))
 }
 
-fn rank(item: &CatalogEntry, query: &str, terms: &[&str]) -> usize {
-    if query.is_empty() {
-        return 100;
-    }
-
-    if terms.len() == 1 && item.tool.eq_ignore_ascii_case(query) {
-        return 0;
-    }
-
-    if item.entry.title.eq_ignore_ascii_case(query) {
-        return 1;
-    }
-
-    if item
+fn rank(item: &CatalogEntry, query: &str, terms: &[&str], state: &UserState) -> usize {
+    let base: usize = if query.is_empty() {
+        100
+    } else if terms.len() == 1 && item.tool.eq_ignore_ascii_case(query) {
+        0
+    } else if item.entry.title.eq_ignore_ascii_case(query) {
+        1
+    } else if item
         .entry
         .aliases
         .iter()
         .any(|alias| alias.eq_ignore_ascii_case(query))
     {
-        return 2;
-    }
-
-    if item
+        2
+    } else if item
         .entry
         .command
         .as_ref()
         .is_some_and(|command| command.eq_ignore_ascii_case(query))
     {
-        return 3;
-    }
-
-    if item.tool.eq_ignore_ascii_case(query) {
-        return 4;
-    }
-
-    if item.entry.title.to_ascii_lowercase().contains(query) {
-        return 5;
-    }
-
-    if item
+        3
+    } else if item.tool.eq_ignore_ascii_case(query) {
+        4
+    } else if item.entry.title.to_ascii_lowercase().contains(query) {
+        5
+    } else if item
         .entry
         .aliases
         .iter()
         .any(|alias| alias.to_ascii_lowercase().contains(query))
     {
-        return 6;
-    }
-
-    if item
+        6
+    } else if item
         .entry
         .command
         .as_ref()
         .is_some_and(|command| command.to_ascii_lowercase().contains(query))
     {
-        return 7;
-    }
-
-    if item
+        7
+    } else if item
         .entry
         .description
         .to_ascii_lowercase()
         .contains(query)
     {
-        return 8;
-    }
+        8
+    } else if terms.iter().all(|term| item.tool.to_ascii_lowercase().contains(term)) {
+        9
+    } else {
+        20
+    };
 
-    if terms.iter().all(|term| item.tool.to_ascii_lowercase().contains(term)) {
-        return 9;
-    }
+    let boost: usize = if state.is_entry_favorite(&item.qualified_id()) {
+        30
+    } else if state.is_tool_favorite(&item.tool) {
+        10
+    } else {
+        0
+    };
 
-    20
+    base.saturating_sub(boost)
 }
 
 fn search_blob(item: &CatalogEntry) -> String {
@@ -231,13 +256,18 @@ fn default_pack_dir() -> Option<PathBuf> {
         }
     }
 
-    if let Ok(dir) = env::var("XDG_CONFIG_HOME") {
-        return Some(PathBuf::from(dir).join("bindfinder").join("packs"));
+    paths::bindfinder_config_dir("packs")
+}
+
+fn default_navi_repo_dir() -> Option<PathBuf> {
+    if let Ok(dir) = env::var("BINDFINDER_NAVI_REPOS_DIR") {
+        let path = PathBuf::from(dir);
+        if !path.as_os_str().is_empty() {
+            return Some(path);
+        }
     }
 
-    env::var("HOME")
-        .ok()
-        .map(|home| PathBuf::from(home).join(".config").join("bindfinder").join("packs"))
+    paths::bindfinder_data_dir("repos")
 }
 
 fn discover_pack_files(dir: &Path) -> Result<Vec<PathBuf>> {
@@ -256,6 +286,20 @@ fn discover_pack_files(dir: &Path) -> Result<Vec<PathBuf>> {
         })
         .collect::<Vec<_>>();
 
+    paths.sort();
+    Ok(paths)
+}
+
+fn discover_repo_dirs(dir: &Path) -> Result<Vec<PathBuf>> {
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut paths = fs::read_dir(dir)
+        .map_err(|err| anyhow!("failed to read {}: {err}", dir.display()))?
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| path.is_dir())
+        .collect::<Vec<_>>();
     paths.sort();
     Ok(paths)
 }
@@ -304,7 +348,7 @@ mod tests {
     #[test]
     fn multi_term_filter_matches_expected_entry() {
         let catalog = Catalog::from_packs(vec![sample_pack()]).expect("catalog should build");
-        let matches = catalog.filter("tmux split");
+        let matches = catalog.filter_with_state("tmux split", &UserState::default(), false, false);
 
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].entry.id, "split-horizontal");

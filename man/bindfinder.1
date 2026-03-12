@@ -1,0 +1,96 @@
+.TH BINDFINDER 1 "March 2026" "bindfinder 0.1.0" "User Commands"
+.SH NAME
+bindfinder \- terminal-first command reference browser
+.SH SYNOPSIS
+.B bindfinder
+[\fICOMMAND\fR]
+.SH DESCRIPTION
+.B bindfinder
+is a terminal-first command reference browser for SSH, tmux, and shell-heavy workflows.
+Run it with no subcommand to open the TUI.
+
+The TUI starts in search mode so you can type immediately.
+Press Esc to enter normal mode for vim-style actions, and / to return to search mode.
+.SH COMMANDS
+.TP
+.B config init
+Write the default YAML config to the standard config path.
+.TP
+.B install auto|tmux|bash|zsh|fish|man
+Print an integration snippet or install artifact for the given target.
+Use
+.B --write
+to write it to the default target path.
+.TP
+.B doctor
+Detect the current environment and show the recommended integration.
+.TP
+.B search \fIQUERY\fR...
+Search loaded entries from the command line.
+.TP
+.B list tools|config|sources
+List discovered tools or important paths.
+.TP
+.B validate \fIPACK_PATH\fR
+Validate a YAML pack file.
+.TP
+.B navi featured|list|import
+Browse and import navi-style cheat repositories.
+.SH TUI FLOW
+.TP
+.B Search mode
+Type immediately to filter.
+Use Up and Down to move through matches.
+Press Enter to select the current result.
+Press Esc to enter normal mode.
+.TP
+.B Normal mode
+Use j and k to move, Ctrl-d and Ctrl-u to page, gg to go to the top, G to go to the bottom, and / to return to search mode.
+
+Additional actions:
+z toggles hidden visibility
+m toggles favorites-only view
+f favorites the selected entry
+x hides the selected entry
+F favorites the selected tool
+X hides the selected tool
+.SH FILES
+.TP
+.I ~/.config/bindfinder/config.yaml
+Default runtime config file.
+.TP
+.I ~/.config/bindfinder/packs
+Default local pack directory.
+.TP
+.I ~/.config/bindfinder/repos
+Default imported navi repository cache.
+.TP
+.I ~/.config/bindfinder/state.yaml
+Persistent favorites and hidden state.
+.TP
+.I ~/.cache/bindfinder/tmux-capture.log
+tmux debug log when tmux debug is enabled.
+.SH EXAMPLES
+.nf
+bindfinder
+bindfinder doctor
+bindfinder install auto --write
+bindfinder install man --write
+bindfinder search tmux split pane
+bindfinder navi import denisidoro/cheats
+.fi
+.SH NOTES
+With shell or tmux integration, the selected command can be inserted into the active command line instead of only being printed.
+
+Cargo installs the
+.B bindfinder
+binary, but it does not install man pages automatically.
+Use
+.B bindfinder install man --write
+to install the shipped man page under
+.I ~/.local/share/man/man1/bindfinder.1 .
+.SH SEE ALSO
+.BR tmux (1),
+.BR bash (1),
+.BR zsh (1),
+.BR fish (1)

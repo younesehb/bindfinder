@@ -16,20 +16,47 @@ keybindings:
   move_down:
     - "down"
     - "j"
+  page_up:
+    - "pageup"
+    - "ctrl-u"
+  page_down:
+    - "pagedown"
+    - "ctrl-d"
+  goto_top:
+    - "g g"
+  goto_bottom:
+    - "shift-g"
+  select:
+    - "enter"
+  search_mode:
+    - "/"
+  favorite_entry:
+    - "f"
+  hide_entry:
+    - "x"
+  favorite_tool:
+    - "shift-f"
+  hide_tool:
+    - "shift-x"
+  toggle_hidden:
+    - "z"
+  toggle_favorites_only:
+    - "m"
 
 integration:
   mode: "auto"
-  launch_key: "ctrl-/"
+  launch_key: "ctrl-g ctrl-b"
   tmux:
     enabled: true
     key: "/"
     use_popup: true
     popup_width: "80%"
     popup_height: "80%"
+    debug: false
   shell:
     enabled: true
     preferred: "auto"
-    binding: "ctrl-/"
+    binding: "ctrl-g ctrl-b"
   terminal:
     enabled: false
     preferred: "auto"

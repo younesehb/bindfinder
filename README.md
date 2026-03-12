@@ -1,193 +1,61 @@
 # bindfinder
 
-`bindfinder` is a terminal-first command reference browser for SSH-heavy workflows.
-It is designed to open quickly inside a shell or `tmux`, search structured
-cheat-sheet content, and help users recall commands and keybindings without
-leaving the terminal.
+`bindfinder` is a terminal command palette for shell, `tmux`, and SSH workflows.
+Open it, search for a tool like `tmux` or `git`, and insert the selected
+command back into your prompt.
 
-## Goals
+## Install
 
-- Fast TUI that works over SSH
-- Clean `tmux` popup workflow
-- Keyboard-first navigation
-- Search across commands, bindings, snippets, and workflows
-- Local-first data packs with an extensible import model
-
-## Non-goals
-
-- Desktop overlays or OS-global hotkeys
-- Cloud-only data storage
-- Arbitrary plugin code execution in the MVP
-- General application launching
-
-## MVP
-
-The initial milestone focuses on:
-
-- a runnable Rust binary
-- an interactive TUI shell
-- built-in and local pack loading
-- ranked multi-term query filtering
-- a shared pack schema
-- built-in content packs, starting with `tmux`
-- documentation for `tmux` integration and future pack loading
-
-## Usage
-
-Current bootstrap behavior:
+From source:
 
 ```bash
-cargo run
+cargo install --path .
 ```
 
-This starts the current TUI shell with built-in `tmux` content. Type to filter,
-use the arrow keys to move, and exit with `q`, `Esc`, or `Ctrl-C`.
-
-You can also use:
+With Homebrew from a local checkout:
 
 ```bash
-cargo run -- search tmux
-cargo run -- list tools
-cargo run -- list config
-cargo run -- list sources
-cargo run -- validate assets/packs/tmux.yaml
-cargo run -- config init
-cargo run -- doctor
-cargo run -- install auto
+brew install --build-from-source ./Formula/bindfinder.rb
 ```
 
-Local packs are loaded from `BINDFINDER_PACK_DIR` if set, otherwise from:
+Then initialize config and install the recommended integration:
 
 ```bash
-~/.config/bindfinder/packs
+bindfinder config init
+bindfinder install auto --write
 ```
 
-Supported local pack file extensions:
+Reload your shell or tmux config once.
 
-- `.yaml`
-- `.yml`
-
-## Test
-
-Run the automated tests:
+## Use
 
 ```bash
-cargo test
+bindfinder
 ```
 
-Run the app interactively:
+The TUI starts in search mode. Type immediately to filter, press `Enter` to
+select, `Esc` for normal mode, and `/` to return to search.
+
+Useful commands:
 
 ```bash
-cargo run
+bindfinder doctor
+bindfinder search tmux split
+bindfinder install man --write
+bindfinder navi import denisidoro/cheats
 ```
 
-Run the built binary directly after compiling:
+## Docs
 
-```bash
-cargo build
-./target/debug/bindfinder
-```
+- [Installation](./docs/install.md)
+- [Configuration](./docs/config.md)
+- [tmux integration](./docs/tmux.md)
+- [navi support](./docs/navi.md)
+- [Pack format](./docs/packs.md)
+- [Release process](./docs/release.md)
 
-Build an optimized release binary:
+## Notes
 
-```bash
-cargo build --release
-./target/release/bindfinder
-```
-
-## Config
-
-Runtime settings and keybindings are configured with YAML.
-
-Default config file:
-
-```bash
-~/.config/bindfinder/config.yaml
-```
-
-Or override it:
-
-```bash
-BINDFINDER_CONFIG=/path/to/config.yaml cargo run
-```
-
-Example config:
-
-```yaml
-settings:
-  result_list_width_percent: 45
-  show_footer: true
-  wrap_preview: true
-
-keybindings:
-  quit: ["q", "esc", "ctrl-c"]
-  clear_query: ["ctrl-u"]
-  move_up: ["up", "k"]
-  move_down: ["down", "j"]
-
-integration:
-  mode: "auto"
-  launch_key: "ctrl-/"
-  tmux:
-    enabled: true
-    key: "/"
-    use_popup: true
-    popup_width: "80%"
-    popup_height: "80%"
-  shell:
-    enabled: true
-    preferred: "auto"
-    binding: "ctrl-/"
-  terminal:
-    enabled: false
-    preferred: "auto"
-```
-
-See [docs/config.md](./docs/config.md) and [examples/config.yaml](./examples/config.yaml).
-
-## Autodetection
-
-`bindfinder` can autodetect the current terminal environment and choose the best
-integration target.
-
-Diagnostics:
-
-```bash
-cargo run -- doctor
-```
-
-Print the recommended install snippet for the current environment:
-
-```bash
-cargo run -- install auto
-```
-
-Write a default config file:
-
-```bash
-cargo run -- config init
-```
-
-## Release
-
-Version `0.1.0` is ready for local packaging. See [docs/release.md](./docs/release.md)
-for the release build and tarball steps.
-
-## Roadmap
-
-1. Load built-in packs from `assets/packs/`
-2. Improve ranking into full fuzzy matching
-3. Add list and preview panes
-4. Add `tmux` popup integration helpers
-5. Add richer local/user pack workflows
-6. Add `navi` importer
-
-## Project Layout
-
-- `src/cli/` command-line entrypoint and argument parsing
-- `src/tui/` terminal UI shell
-- `src/core/` domain types
-- `assets/packs/` built-in reference packs
-- `docs/` architecture and integration notes
-
-See [SPEC.md](./SPEC.md) for the product and architecture plan.
+- Linux and macOS are supported.
+- `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
+- The repository ships a Homebrew formula in [Formula/bindfinder.rb](./Formula/bindfinder.rb).

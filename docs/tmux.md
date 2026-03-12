@@ -1,27 +1,83 @@
 # tmux Integration
 
-`bindfinder` is intended to be especially effective inside `tmux`.
+`bindfinder` works well inside `tmux` and supports both popup and split-pane
+launch modes.
+
+## Recommended Setup
+
+Write the managed tmux block automatically:
+
+```bash
+bindfinder install tmux --write
+tmux source-file ~/.tmux.conf
+```
+
+In the current implementation, the installed tmux binding calls the internal
+`tmux-launch` flow, which:
+
+- asks tmux for the current pane id
+- opens `bindfinder` in a new split or popup
+- captures the selected command
+- pastes it back into the original pane
+- closes the temporary pane when appropriate
+
+## Default Binding
+
+The default tmux key is:
+
+```tmux
+prefix + /
+```
+
+If your tmux prefix is `C-a`, that means:
+
+```text
+Ctrl-a /
+```
+
+## Split Mode
+
+When `integration.tmux.use_popup: false`, the generated binding looks like:
+
+```tmux
+bind-key / run-shell "/home/USER/.local/bin/bindfinder tmux-launch"
+```
+
+The `tmux-launch` subcommand opens a vertical split sized for the TUI and then
+reinjects the selected command into the original pane.
 
 ## Popup Mode
 
-Preferred integration:
+When `integration.tmux.use_popup: true`, `bindfinder` still uses the same
+`tmux-launch`/`tmux-capture` flow, but opens through tmux popup support instead
+of a split.
 
-```tmux
-bind-key / display-popup -E 'bindfinder'
+Use popup mode only if you prefer an overlay-like experience inside tmux.
+
+## Debugging
+
+If tmux integration misbehaves, enable:
+
+```yaml
+integration:
+  tmux:
+    debug: true
 ```
 
-This requires a `tmux` version with popup support.
+Logs are written to:
 
-## Split Fallback
-
-For older environments:
-
-```tmux
-bind-key / split-window -v 'bindfinder'
+```bash
+~/.cache/bindfinder/tmux-capture.log
 ```
 
-## Design Notes
+One-off override:
 
-- The app must handle narrow terminals gracefully.
-- Startup time matters more than visual complexity.
-- Popup mode should be the primary documented workflow.
+```bash
+BINDFINDER_DEBUG_LOG=/tmp/bindfinder.log
+```
+
+## Notes
+
+- `bind-key` is a tmux command, not a bash command.
+- The selected command is pasted back into the original tmux pane, not executed.
+- If the binding changes do not take effect, reload tmux with `tmux source-file ~/.tmux.conf`.
