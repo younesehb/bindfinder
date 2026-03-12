@@ -3,11 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 use crate::core::{
     navi,
-    pack::{Entry, Pack, parse_pack_file, parse_pack_str},
+    pack::{parse_pack_file, parse_pack_str, Entry, Pack},
 };
 use crate::paths;
 use crate::state::UserState;
@@ -106,7 +106,8 @@ impl Catalog {
             .iter()
             .filter(|item| {
                 include_hidden
-                    || (!state.is_tool_hidden(&item.tool) && !state.is_entry_hidden(&item.qualified_id()))
+                    || (!state.is_tool_hidden(&item.tool)
+                        && !state.is_entry_hidden(&item.qualified_id()))
             })
             .filter(|item| {
                 !favorites_only
@@ -201,14 +202,12 @@ fn rank(item: &CatalogEntry, query: &str, terms: &[&str], state: &UserState) -> 
         .is_some_and(|command| command.to_ascii_lowercase().contains(query))
     {
         7
-    } else if item
-        .entry
-        .description
-        .to_ascii_lowercase()
-        .contains(query)
-    {
+    } else if item.entry.description.to_ascii_lowercase().contains(query) {
         8
-    } else if terms.iter().all(|term| item.tool.to_ascii_lowercase().contains(term)) {
+    } else if terms
+        .iter()
+        .all(|term| item.tool.to_ascii_lowercase().contains(term))
+    {
         9
     } else {
         20
@@ -243,7 +242,12 @@ fn search_blob(item: &CatalogEntry) -> String {
     }
 
     fields.extend(item.entry.tags.iter().map(|tag| tag.to_ascii_lowercase()));
-    fields.extend(item.entry.aliases.iter().map(|alias| alias.to_ascii_lowercase()));
+    fields.extend(
+        item.entry
+            .aliases
+            .iter()
+            .map(|alias| alias.to_ascii_lowercase()),
+    );
 
     fields.join("\n")
 }

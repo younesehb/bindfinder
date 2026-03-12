@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{anyhow, bail, Context, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,7 @@ pub struct AppConfigFile {
     pub integration: IntegrationConfigFile,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AppConfig {
     pub settings: Settings,
     pub keybindings: KeyBindings,
@@ -142,7 +142,7 @@ pub struct TmuxConfig {
     pub enabled: bool,
     #[serde(default = "default_tmux_key")]
     pub key: String,
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub use_popup: bool,
     #[serde(default = "default_popup_width")]
     pub popup_width: String,
@@ -228,16 +228,6 @@ impl AppConfig {
     }
 }
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            settings: Settings::default(),
-            keybindings: KeyBindings::default(),
-            integration: IntegrationConfig::default(),
-        }
-    }
-}
-
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -251,22 +241,23 @@ impl Default for Settings {
 impl Default for KeyBindings {
     fn default() -> Self {
         Self {
-            quit: parse_bindings(&["q", "esc", "ctrl-c"]).expect("default quit bindings"),
-            clear_query: parse_bindings(&["ctrl-u"]).expect("default clear bindings"),
-            move_up: parse_bindings(&["up", "k"]).expect("default move up bindings"),
-            move_down: parse_bindings(&["down", "j"]).expect("default move down bindings"),
-            page_up: parse_bindings(&["pageup", "ctrl-u"]).expect("default page up bindings"),
-            page_down: parse_bindings(&["pagedown", "ctrl-d"]).expect("default page down bindings"),
-            goto_top: parse_sequences(&["g g"]).expect("default goto top bindings"),
-            goto_bottom: parse_sequences(&["shift-g"]).expect("default goto bottom bindings"),
-            select: parse_bindings(&["enter"]).expect("default select bindings"),
-            search_mode: parse_bindings(&["/"]).expect("default search mode bindings"),
-            favorite_entry: parse_bindings(&["f"]).expect("default favorite entry bindings"),
-            hide_entry: parse_bindings(&["x"]).expect("default hide entry bindings"),
-            favorite_tool: parse_bindings(&["shift-f"]).expect("default favorite tool bindings"),
-            hide_tool: parse_bindings(&["shift-x"]).expect("default hide tool bindings"),
-            toggle_hidden: parse_bindings(&["z"]).expect("default toggle hidden bindings"),
-            toggle_favorites_only: parse_bindings(&["m"]).expect("default toggle favorites bindings"),
+            quit: parse_bindings(["q", "esc", "ctrl-c"]).expect("default quit bindings"),
+            clear_query: parse_bindings(["ctrl-u"]).expect("default clear bindings"),
+            move_up: parse_bindings(["up", "k"]).expect("default move up bindings"),
+            move_down: parse_bindings(["down", "j"]).expect("default move down bindings"),
+            page_up: parse_bindings(["pageup", "ctrl-u"]).expect("default page up bindings"),
+            page_down: parse_bindings(["pagedown", "ctrl-d"]).expect("default page down bindings"),
+            goto_top: parse_sequences(["g g"]).expect("default goto top bindings"),
+            goto_bottom: parse_sequences(["shift-g"]).expect("default goto bottom bindings"),
+            select: parse_bindings(["enter"]).expect("default select bindings"),
+            search_mode: parse_bindings(["/"]).expect("default search mode bindings"),
+            favorite_entry: parse_bindings(["f"]).expect("default favorite entry bindings"),
+            hide_entry: parse_bindings(["x"]).expect("default hide entry bindings"),
+            favorite_tool: parse_bindings(["shift-f"]).expect("default favorite tool bindings"),
+            hide_tool: parse_bindings(["shift-x"]).expect("default hide tool bindings"),
+            toggle_hidden: parse_bindings(["z"]).expect("default toggle hidden bindings"),
+            toggle_favorites_only: parse_bindings(["m"])
+                .expect("default toggle favorites bindings"),
         }
     }
 }
@@ -288,7 +279,7 @@ impl Default for TmuxConfig {
         Self {
             enabled: default_true(),
             key: default_tmux_key(),
-            use_popup: default_true(),
+            use_popup: false,
             popup_width: default_popup_width(),
             popup_height: default_popup_height(),
             debug: false,
@@ -353,7 +344,9 @@ impl KeyBindings {
     }
 
     pub fn matches_favorite_entry(&self, key: KeyEvent) -> bool {
-        self.favorite_entry.iter().any(|binding| binding.matches(key))
+        self.favorite_entry
+            .iter()
+            .any(|binding| binding.matches(key))
     }
 
     pub fn matches_hide_entry(&self, key: KeyEvent) -> bool {
@@ -361,7 +354,9 @@ impl KeyBindings {
     }
 
     pub fn matches_favorite_tool(&self, key: KeyEvent) -> bool {
-        self.favorite_tool.iter().any(|binding| binding.matches(key))
+        self.favorite_tool
+            .iter()
+            .any(|binding| binding.matches(key))
     }
 
     pub fn matches_hide_tool(&self, key: KeyEvent) -> bool {
@@ -369,11 +364,15 @@ impl KeyBindings {
     }
 
     pub fn matches_toggle_hidden(&self, key: KeyEvent) -> bool {
-        self.toggle_hidden.iter().any(|binding| binding.matches(key))
+        self.toggle_hidden
+            .iter()
+            .any(|binding| binding.matches(key))
     }
 
     pub fn matches_toggle_favorites_only(&self, key: KeyEvent) -> bool {
-        self.toggle_favorites_only.iter().any(|binding| binding.matches(key))
+        self.toggle_favorites_only
+            .iter()
+            .any(|binding| binding.matches(key))
     }
 }
 
@@ -445,7 +444,11 @@ impl From<&KeyBindings> for KeyBindingsFile {
             favorite_tool: value.favorite_tool.iter().map(format_binding).collect(),
             hide_tool: value.hide_tool.iter().map(format_binding).collect(),
             toggle_hidden: value.toggle_hidden.iter().map(format_binding).collect(),
-            toggle_favorites_only: value.toggle_favorites_only.iter().map(format_binding).collect(),
+            toggle_favorites_only: value
+                .toggle_favorites_only
+                .iter()
+                .map(format_binding)
+                .collect(),
         }
     }
 }
@@ -572,9 +575,9 @@ fn parse_key_code(value: &str) -> Result<KeyCode> {
         "tab" => Ok(KeyCode::Tab),
         "backspace" => Ok(KeyCode::Backspace),
         "esc" | "escape" => Ok(KeyCode::Esc),
-        single if single.chars().count() == 1 => Ok(KeyCode::Char(
-            single.chars().next().expect("single char"),
-        )),
+        single if single.chars().count() == 1 => {
+            Ok(KeyCode::Char(single.chars().next().expect("single char")))
+        }
         _ => bail!("unsupported keybinding key: {value}"),
     }
 }
@@ -624,7 +627,12 @@ fn format_binding(binding: &KeyBinding) -> String {
 }
 
 fn format_sequence(sequence: &KeySequence) -> String {
-    sequence.steps.iter().map(format_binding).collect::<Vec<_>>().join(" ")
+    sequence
+        .steps
+        .iter()
+        .map(format_binding)
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn normalize_event_key(key: KeyEvent) -> KeyBinding {
@@ -695,7 +703,7 @@ fn default_true() -> bool {
 }
 
 fn default_launch_key() -> String {
-    "ctrl-g ctrl-b".to_string()
+    "alt-/".to_string()
 }
 
 fn default_tmux_key() -> String {
@@ -727,14 +735,12 @@ mod tests {
     fn default_config_has_expected_bindings() {
         let config = AppConfig::default();
         assert_eq!(config.settings.result_list_width_percent, 45);
-        assert!(config.keybindings.matches_move_up(KeyEvent::new(
-            KeyCode::Up,
-            KeyModifiers::NONE
-        )));
-        assert!(config.keybindings.matches_quit(KeyEvent::new(
-            KeyCode::Esc,
-            KeyModifiers::NONE
-        )));
+        assert!(config
+            .keybindings
+            .matches_move_up(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE)));
+        assert!(config
+            .keybindings
+            .matches_quit(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)));
     }
 
     #[test]
@@ -754,7 +760,7 @@ keybindings:
   hide_entry: ["o"]
 integration:
   mode: "tmux"
-  launch_key: "ctrl-g ctrl-b"
+  launch_key: "alt-/"
   tmux:
     key: "?"
     use_popup: false
@@ -774,22 +780,19 @@ integration:
         assert!(!config.settings.show_footer);
         assert!(!config.settings.wrap_preview);
         assert_eq!(config.integration.mode, IntegrationMode::Tmux);
-        assert_eq!(config.integration.launch_key, "ctrl-g ctrl-b");
+        assert_eq!(config.integration.launch_key, "alt-/");
         assert_eq!(config.integration.tmux.key, "?");
         assert!(!config.integration.tmux.use_popup);
         assert!(config.integration.tmux.debug);
-        assert!(config.keybindings.matches_move_up(KeyEvent::new(
-            KeyCode::Char('w'),
-            KeyModifiers::NONE
-        )));
-        assert!(config.keybindings.matches_hide_entry(KeyEvent::new(
-            KeyCode::Char('o'),
-            KeyModifiers::NONE
-        )));
-        assert!(config.keybindings.matches_quit(KeyEvent::new(
-            KeyCode::Char('x'),
-            KeyModifiers::NONE
-        )));
+        assert!(config
+            .keybindings
+            .matches_move_up(KeyEvent::new(KeyCode::Char('w'), KeyModifiers::NONE)));
+        assert!(config
+            .keybindings
+            .matches_hide_entry(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::NONE)));
+        assert!(config
+            .keybindings
+            .matches_quit(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE)));
     }
 
     #[test]
@@ -798,7 +801,7 @@ integration:
             .to_yaml_string()
             .expect("default config should serialize");
         assert!(yaml.contains("integration:"));
-        assert!(yaml.contains("launch_key: ctrl-g ctrl-b"));
+        assert!(yaml.contains("launch_key: alt-/"));
     }
 
     #[test]
@@ -812,12 +815,10 @@ integration:
                 modifiers: KeyModifiers::SHIFT,
             }
         );
-        assert!(
-            bindings
-                .goto_bottom
-                .iter()
-                .any(|sequence| sequence.matches_exact(&[bindings.key_from_event(upper_g)]))
-        );
+        assert!(bindings
+            .goto_bottom
+            .iter()
+            .any(|sequence| sequence.matches_exact(&[bindings.key_from_event(upper_g)])));
     }
 
     #[test]

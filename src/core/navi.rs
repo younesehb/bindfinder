@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 
 use crate::core::pack::{Entry, EntryType, Pack, PackMeta};
 
@@ -56,7 +56,11 @@ pub fn parse_cheat_str(root: &Path, repo_name: &str, path: &Path, input: &str) -
         bail!("no entries found in {}", path.display());
     }
 
-    let pack_id = format!("navi:{}:{}", sanitize_id(repo_name), sanitize_id(&rel.display().to_string()));
+    let pack_id = format!(
+        "navi:{}:{}",
+        sanitize_id(repo_name),
+        sanitize_id(&rel.display().to_string())
+    );
     let pack_title = format!("{} ({})", tool, repo_name);
     let entries = sectioned_entries
         .into_iter()
@@ -140,12 +144,22 @@ fn parse_entries(input: &str) -> Result<Vec<RawEntry>> {
     for raw_line in input.lines() {
         let line = raw_line.trim_end();
         if let Some(rest) = line.strip_prefix('%') {
-            flush(&mut entries, &section, &mut current_title, &mut command_lines);
+            flush(
+                &mut entries,
+                &section,
+                &mut current_title,
+                &mut command_lines,
+            );
             section = Some(rest.trim().to_string());
             continue;
         }
         if let Some(rest) = line.strip_prefix('#') {
-            flush(&mut entries, &section, &mut current_title, &mut command_lines);
+            flush(
+                &mut entries,
+                &section,
+                &mut current_title,
+                &mut command_lines,
+            );
             let title = rest.trim();
             if !title.is_empty() {
                 current_title = Some(title.to_string());
@@ -157,14 +171,24 @@ fn parse_entries(input: &str) -> Result<Vec<RawEntry>> {
         }
         if current_title.is_some() {
             if line.trim().is_empty() {
-                flush(&mut entries, &section, &mut current_title, &mut command_lines);
+                flush(
+                    &mut entries,
+                    &section,
+                    &mut current_title,
+                    &mut command_lines,
+                );
             } else {
                 command_lines.push(line.to_string());
             }
         }
     }
 
-    flush(&mut entries, &section, &mut current_title, &mut command_lines);
+    flush(
+        &mut entries,
+        &section,
+        &mut current_title,
+        &mut command_lines,
+    );
     Ok(entries)
 }
 
@@ -172,8 +196,12 @@ fn walk_cheat_files(dir: &Path, acc: &mut Vec<PathBuf>) -> Result<()> {
     if !dir.exists() {
         return Ok(());
     }
-    for entry in fs::read_dir(dir).map_err(|err| anyhow!("failed to read {}: {err}", dir.display()))? {
-        let path = entry.map_err(|err| anyhow!("failed to read dir entry: {err}"))?.path();
+    for entry in
+        fs::read_dir(dir).map_err(|err| anyhow!("failed to read {}: {err}", dir.display()))?
+    {
+        let path = entry
+            .map_err(|err| anyhow!("failed to read dir entry: {err}"))?
+            .path();
         if path.is_dir() {
             walk_cheat_files(&path, acc)?;
         } else if path

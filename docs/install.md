@@ -1,6 +1,8 @@
 # Installation
 
 `bindfinder` is terminal-only and works on Linux and macOS.
+The default cross-terminal behavior is full-screen takeover in the current
+terminal. tmux popups and terminal-specific overlays are optional enhancements.
 
 Current supported install paths:
 
@@ -26,11 +28,12 @@ The installer:
 - installs the man page into `~/.local/share/man/man1`
 - writes the default config with `bindfinder config init`
 - installs tmux, bash, zsh, or fish integration automatically when the current environment can be detected safely
+- when both tmux and a supported shell are present, installs both integrations
 
 Useful overrides:
 
 ```bash
-BINDFINDER_VERSION=0.1.1 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+BINDFINDER_VERSION=0.1.2 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh -s -- --no-setup
 ```
@@ -45,6 +48,23 @@ After changing integration-related config later, you can re-apply it with:
 ```bash
 bindfinder reload
 ```
+
+To write both shell and tmux integration blocks explicitly:
+
+```bash
+bindfinder install all --write
+```
+
+The shell setup also adds helper commands:
+
+- `bindfinder`
+- `bf`
+
+With the shell integration loaded:
+
+- `bindfinder` with no arguments uses the shell-integrated picker path
+- `bindfinder ...subcommand...` still calls the real binary
+- `bf` is a short alias for the shell-integrated picker path
 
 ## Cargo
 

@@ -43,18 +43,18 @@ keybindings:
 
 integration:
   mode: "auto"
-  launch_key: "ctrl-g ctrl-b"
+  launch_key: "alt-/"
   tmux:
     enabled: true
     key: "/"
-    use_popup: true
+    use_popup: false
     popup_width: "80%"
     popup_height: "80%"
     debug: false
   shell:
     enabled: true
     preferred: "auto"
-    binding: "ctrl-g ctrl-b"
+    binding: "alt-/"
   terminal:
     enabled: false
     preferred: "auto"
@@ -67,8 +67,16 @@ TUI behavior:
 - Normal mode uses vim-style navigation: `j`/`k`, `Ctrl-d`/`Ctrl-u`, `gg`, `G`, `/`.
 - Normal mode also supports user state actions: `z` toggle hidden visibility, `m` toggle favorites-only view, `f` favorite entry, `x` hide entry, `F` favorite tool, `X` hide tool.
 - Press `/` to return to search mode and clear the current query.
+- If the selected command contains placeholders like `<branch>` or `<package>`, `bindfinder` opens an argument form inside the TUI before inserting the final command.
+- In the argument form, placeholders are prefilled with their current names. Leave them unchanged if you want the same behavior as before.
 - Most single-key TUI actions are remappable in `keybindings`.
 - Multi-stroke actions are supported in YAML, for example `goto_top: ["g g"]`.
+
+Integration behavior:
+
+- The default terminal-first baseline is full-screen in the current terminal.
+- In tmux, the default is a split pane, not a popup.
+- If you prefer an overlay-like tmux experience, set `integration.tmux.use_popup: true`.
 
 Supported key names:
 

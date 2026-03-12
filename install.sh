@@ -117,29 +117,33 @@ basename_of() {
 }
 
 detect_setup_target() {
+  targets=""
   if [ -n "${TMUX:-}" ]; then
-    printf '%s\n' "tmux"
-    return
+    targets="tmux"
   fi
-
   shell_name="$(basename_of "${SHELL:-}")"
   case "$shell_name" in
     bash|zsh|fish)
-      printf '%s\n' "$shell_name"
+      if [ -n "$targets" ]; then
+        targets="$targets $shell_name"
+      else
+        targets="$shell_name"
+      fi
       ;;
-    *)
-      printf '%s\n' ""
-      ;;
+    *) ;;
   esac
+  printf '%s\n' "$targets"
 }
 
 run_setup() {
-  target="$1"
+  targets="$1"
 
   "$BIN_DIR/bindfinder" config init
 
-  if [ -n "$target" ]; then
-    "$BIN_DIR/bindfinder" install "$target" --write
+  if [ -n "$targets" ]; then
+    for target in $targets; do
+      "$BIN_DIR/bindfinder" install "$target" --write
+    done
   else
     echo "bindfinder installer: skipping integration setup because the shell could not be detected safely." >&2
     echo "Run 'bindfinder install auto --write' after adding $BIN_DIR to PATH." >&2

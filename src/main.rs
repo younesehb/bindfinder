@@ -1,5 +1,5 @@
-mod config;
 mod cli;
+mod config;
 mod core;
 mod integration;
 mod paths;

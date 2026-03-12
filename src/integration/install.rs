@@ -63,20 +63,10 @@ pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo) -> String {
 
 fn render_tmux(config: &AppConfig) -> String {
     let bindfinder = tmux_bindfinder_path();
-
-    if config.integration.tmux.use_popup {
-        format!(
-            "bind-key {} run-shell \"{} tmux-launch\"",
-            config.integration.tmux.key,
-            bindfinder
-        )
-    } else {
-        format!(
-            "bind-key {} run-shell \"{} tmux-launch\"",
-            config.integration.tmux.key,
-            bindfinder
-        )
-    }
+    format!(
+        "bind-key {} run-shell \"{} tmux-launch\"",
+        config.integration.tmux.key, bindfinder
+    )
 }
 
 fn render_shell(config: &AppConfig, shell: &ShellKind) -> String {
@@ -134,7 +124,11 @@ fn tmux_bindfinder_path() -> String {
         .unwrap_or_else(|| "bindfinder".to_string())
 }
 
-pub fn explicit_target(target: &str, env: &EnvironmentInfo, config: &AppConfig) -> IntegrationTarget {
+pub fn explicit_target(
+    target: &str,
+    env: &EnvironmentInfo,
+    config: &AppConfig,
+) -> IntegrationTarget {
     match target {
         "auto" => env.choose_target(config),
         "tmux" => IntegrationTarget::Tmux,
@@ -152,7 +146,9 @@ pub fn default_install_path(target: &IntegrationTarget) -> Option<PathBuf> {
         IntegrationTarget::Tmux => Some(home.join(".tmux.conf")),
         IntegrationTarget::Shell(ShellKind::Bash) => Some(home.join(".bashrc")),
         IntegrationTarget::Shell(ShellKind::Zsh) => Some(home.join(".zshrc")),
-        IntegrationTarget::Shell(ShellKind::Fish) => Some(home.join(".config").join("fish").join("config.fish")),
+        IntegrationTarget::Shell(ShellKind::Fish) => {
+            Some(home.join(".config").join("fish").join("config.fish"))
+        }
         _ => None,
     }
 }
@@ -174,8 +170,7 @@ pub fn write_plain_file(path: &Path, content: &str) -> Result<()> {
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
 
-    fs::write(path, content)
-        .with_context(|| format!("failed to write {}", path.display()))?;
+    fs::write(path, content).with_context(|| format!("failed to write {}", path.display()))?;
     Ok(())
 }
 
@@ -189,8 +184,7 @@ pub fn write_install_block(path: &Path, snippet: &str) -> Result<()> {
     let managed = managed_block(snippet);
     let new_content = replace_or_append_managed_block(&existing, &managed);
 
-    fs::write(path, new_content)
-        .with_context(|| format!("failed to write {}", path.display()))?;
+    fs::write(path, new_content).with_context(|| format!("failed to write {}", path.display()))?;
     Ok(())
 }
 
@@ -268,7 +262,7 @@ fn format_mode(mode: &crate::config::IntegrationMode) -> &'static str {
 
 fn render_bash_shell(config: &AppConfig) -> String {
     format!(
-        "bindfinder_capture() {{\n  local cmd\n  cmd=\"$(bindfinder)\" || return\n  [ -n \"$cmd\" ] || return\n  printf '%s' \"$cmd\"\n}}\nbindfinder_widget() {{\n  local cmd\n  cmd=\"$(bindfinder_capture)\" || return\n  READLINE_LINE=\"${{READLINE_LINE:0:READLINE_POINT}}$cmd${{READLINE_LINE:READLINE_POINT}}\"\n  READLINE_POINT=$((READLINE_POINT + ${{#cmd}}))\n}}\nif [[ ${{BLE_VERSION-}} ]] && type ble-bind >/dev/null 2>&1; then\n  function ble/widget/bindfinder {{\n    local cmd\n    cmd=\"$(bindfinder_capture)\" || return\n    ble/widget/insert-string \"$cmd\"\n    ble/textarea#invalidate\n  }}\n  ble-bind -f '{}' bindfinder\nelse\n  bind -x '\"{}\":bindfinder_widget'\nfi\n# requested launch key: {}",
+        "bindfinder_capture() {{\n  local tmp cmd status\n  tmp=\"$(mktemp)\" || return\n  BINDFINDER_OUTPUT_FILE=\"$tmp\" command bindfinder </dev/tty >/dev/tty\n  status=$?\n  cmd=\"$(cat \"$tmp\" 2>/dev/null)\"\n  rm -f \"$tmp\"\n  [ $status -eq 0 ] || return\n  [ -n \"$cmd\" ] || return\n  printf '%s' \"$cmd\"\n}}\nbindfinder_prepare_command() {{\n  local cmd=\"$1\" prefix rest placeholder suffix\n  BINDFINDER_CMD_RENDERED=\"$cmd\"\n  BINDFINDER_PLACEHOLDER_START=\n  BINDFINDER_PLACEHOLDER_LEN=\n  if [[ $cmd == *'<'*'>'* ]]; then\n    prefix=\"${{cmd%%<*}}\"\n    rest=\"${{cmd#*<}}\"\n    placeholder=\"${{rest%%>*}}\"\n    suffix=\"${{rest#*>}}\"\n    if [[ -n $placeholder && $rest != \"$cmd\" ]]; then\n      BINDFINDER_CMD_RENDERED=\"${{prefix}}${{placeholder}}${{suffix}}\"\n      BINDFINDER_PLACEHOLDER_START=${{#prefix}}\n      BINDFINDER_PLACEHOLDER_LEN=${{#placeholder}}\n    fi\n  fi\n}}\nbindfinder_pick_command() {{\n  local cmd\n  cmd=\"$(bindfinder_capture)\" || return\n  bindfinder_prepare_command \"$cmd\"\n  printf '%s' \"$BINDFINDER_CMD_RENDERED\"\n}}\nbindfinder_widget() {{\n  local cmd base start end\n  cmd=\"$(bindfinder_capture)\" || return\n  bindfinder_prepare_command \"$cmd\"\n  base=$READLINE_POINT\n  READLINE_LINE=\"${{READLINE_LINE:0:READLINE_POINT}}$BINDFINDER_CMD_RENDERED${{READLINE_LINE:READLINE_POINT}}\"\n  if [[ -n $BINDFINDER_PLACEHOLDER_START ]]; then\n    start=$((base + BINDFINDER_PLACEHOLDER_START))\n    end=$((start + BINDFINDER_PLACEHOLDER_LEN))\n    READLINE_POINT=$start\n    READLINE_MARK=$end\n  else\n    READLINE_POINT=$((base + ${{#BINDFINDER_CMD_RENDERED}}))\n    READLINE_MARK=$READLINE_POINT\n  fi\n}}\nbindfinder_shell() {{\n  local line\n  line=\"$(bindfinder_pick_command)\" || return\n  [ -n \"$line\" ] || return\n  if [[ $- == *i* ]] && [[ -t 0 && -t 1 ]]; then\n    read -e -i \"$line\" -p \"${{PS1@P}}\" line || return\n  fi\n  [ -n \"$line\" ] || return\n  history -s -- \"$line\"\n  printf '%s\\n' \"$line\"\n}}\nbf() {{\n  bindfinder_shell \"$@\"\n}}\nbindfinder() {{\n  if [[ $# -eq 0 ]] && [[ $- == *i* ]] && [[ -t 0 && -t 1 ]]; then\n    bindfinder_shell\n  else\n    command bindfinder \"$@\"\n  fi\n}}\nif [[ ${{BLE_VERSION-}} ]] && type ble-bind >/dev/null 2>&1; then\n  function ble/widget/bindfinder {{\n    local cmd base start end\n    cmd=\"$(bindfinder_capture)\" || return\n    bindfinder_prepare_command \"$cmd\"\n    base=$_ble_edit_ind\n    ble-edit/content/replace-limited \"$base\" \"$base\" \"$BINDFINDER_CMD_RENDERED\"\n    if [[ -n $BINDFINDER_PLACEHOLDER_START ]]; then\n      start=$((base + BINDFINDER_PLACEHOLDER_START))\n      end=$((start + BINDFINDER_PLACEHOLDER_LEN))\n      _ble_edit_ind=$start\n      _ble_edit_mark=$end\n      _ble_edit_mark_active=insert\n    else\n      _ble_edit_ind=$((base + ${{#BINDFINDER_CMD_RENDERED}}))\n      _ble_edit_mark=$_ble_edit_ind\n      _ble_edit_mark_active=\n    fi\n    ble/textarea#invalidate\n  }}\n  ble-bind -f '{}' bindfinder\nelse\n  bind -x '\"{}\":bindfinder_widget'\nfi\n# helper commands: bindfinder, bf\n# requested launch key: {}",
         ble_bash_binding(&config.integration.shell.binding),
         bash_binding(&config.integration.shell.binding),
         config.integration.shell.binding
@@ -277,7 +271,7 @@ fn render_bash_shell(config: &AppConfig) -> String {
 
 fn render_zsh_shell(config: &AppConfig) -> String {
     format!(
-        "bindfinder-widget() {{\n  local cmd\n  cmd=\"$(bindfinder)\" || return\n  [[ -n \"$cmd\" ]] || return\n  LBUFFER+=\"$cmd\"\n}}\nzle -N bindfinder-widget\nbindkey '{}' bindfinder-widget\n# requested launch key: {}",
+        "bindfinder-pick-command() {{\n  local tmp cmd status rendered prefix rest placeholder suffix\n  tmp=\"$(mktemp)\" || return\n  BINDFINDER_OUTPUT_FILE=\"$tmp\" command bindfinder </dev/tty >/dev/tty\n  status=$?\n  cmd=\"$(cat \"$tmp\" 2>/dev/null)\"\n  rm -f \"$tmp\"\n  (( status == 0 )) || return\n  [[ -n \"$cmd\" ]] || return\n  rendered=\"$cmd\"\n  if [[ $cmd == *'<'*'>'* ]]; then\n    prefix=\"${{cmd%%<*}}\"\n    rest=\"${{cmd#*<}}\"\n    placeholder=\"${{rest%%>*}}\"\n    suffix=\"${{rest#*>}}\"\n    if [[ -n $placeholder && $rest != \"$cmd\" ]]; then\n      rendered=\"${{prefix}}${{placeholder}}${{suffix}}\"\n    fi\n  fi\n  printf '%s' \"$rendered\"\n}}\nbindfinder-widget() {{\n  local rendered base start end prefix rest placeholder suffix\n  rendered=\"$(bindfinder-pick-command)\" || return\n  base=$CURSOR\n  start=\n  end=\n  if [[ $rendered == *'<'*'>'* ]]; then\n    prefix=\"${{rendered%%<*}}\"\n    rest=\"${{rendered#*<}}\"\n    placeholder=\"${{rest%%>*}}\"\n    suffix=\"${{rest#*>}}\"\n    if [[ -n $placeholder && $rest != \"$rendered\" ]]; then\n      rendered=\"${{prefix}}${{placeholder}}${{suffix}}\"\n      start=$((base + ${{#prefix}}))\n      end=$((start + ${{#placeholder}}))\n    fi\n  fi\n  LBUFFER+=\"$rendered\"\n  if [[ -n $start ]]; then\n    CURSOR=$start\n    MARK=$end\n    REGION_ACTIVE=1\n  fi\n}}\nbindfinder-shell() {{\n  local rendered\n  rendered=\"$(bindfinder-pick-command)\" || return\n  [[ -n \"$rendered\" ]] || return\n  print -z -- \"$rendered\"\n}}\nbf() {{\n  bindfinder-shell \"$@\"\n}}\nbindfinder() {{\n  if (( $# == 0 )) && [[ -o interactive ]] && [[ -t 0 && -t 1 ]]; then\n    bindfinder-shell\n  else\n    command bindfinder \"$@\"\n  fi\n}}\nzle -N bindfinder-widget\nbindkey '{}' bindfinder-widget\n# helper commands: bindfinder, bf\n# requested launch key: {}",
         zsh_binding(&config.integration.shell.binding),
         config.integration.shell.binding
     )
@@ -285,7 +279,7 @@ fn render_zsh_shell(config: &AppConfig) -> String {
 
 fn render_fish_shell(config: &AppConfig) -> String {
     format!(
-        "function bindfinder_widget\n    set -l cmd (bindfinder)\n    or return\n    test -n \"$cmd\"; or return\n    commandline -i -- \"$cmd\"\nend\nbind {} bindfinder_widget",
+        "function bindfinder_widget\n    set -l tmp (mktemp)\n    or return\n    env BINDFINDER_OUTPUT_FILE=\"$tmp\" bindfinder </dev/tty >/dev/tty\n    set -l status $status\n    set -l cmd \"\"\n    if test -f \"$tmp\"\n        set cmd (cat \"$tmp\")\n        rm -f \"$tmp\"\n    end\n    test $status -eq 0; or return\n    test -n \"$cmd\"; or return\n    set -l rendered \"$cmd\"\n    set -l placeholder_start \"\"\n    if string match -rq '^([^<]*)<([^<>]+)>(.*)$' -- \"$cmd\"\n        set -l prefix (string replace -r '^([^<]*)<([^<>]+)>(.*)$' '$1' -- \"$cmd\")\n        set -l placeholder (string replace -r '^([^<]*)<([^<>]+)>(.*)$' '$2' -- \"$cmd\")\n        set -l suffix (string replace -r '^([^<]*)<([^<>]+)>(.*)$' '$3' -- \"$cmd\")\n        set rendered \"$prefix$placeholder$suffix\"\n        set placeholder_start (string length -- \"$prefix\")\n    end\n    set -l base (commandline -C)\n    commandline -i -- \"$rendered\"\n    if test -n \"$placeholder_start\"\n        commandline -C (math \"$base + $placeholder_start\")\n    end\nend\nbind {} bindfinder_widget",
         fish_binding(&config.integration.shell.binding)
     )
 }
@@ -330,7 +324,7 @@ fn bash_like_binding(binding: &str, uppercase_ctrl: bool) -> String {
         .map(|token| bash_binding_token(token, uppercase_ctrl))
         .collect();
     if tokens.is_empty() {
-        "\\C-g\\C-b".to_string()
+        "\\e/".to_string()
     } else {
         tokens.join("")
     }
@@ -360,9 +354,9 @@ fn bash_binding_token(token: &str, uppercase_ctrl: bool) -> String {
         other if other.len() == 1 => other.to_string(),
         _ => {
             if uppercase_ctrl {
-                "C-g C-b".to_string()
+                "M-/".to_string()
             } else {
-                "\\C-g\\C-b".to_string()
+                "\\e/".to_string()
             }
         }
     }
@@ -374,7 +368,7 @@ fn ble_bash_binding(binding: &str) -> String {
         .map(|token| bash_binding_token(token, true))
         .collect();
     if tokens.is_empty() {
-        "C-g C-b".to_string()
+        "M-/".to_string()
     } else {
         tokens.join(" ")
     }
@@ -392,7 +386,7 @@ fn zsh_binding_token(token: &str) -> String {
             format!("^[{}", &other[4..])
         }
         other if other.len() == 1 => other.to_string(),
-        _ => "^G^B".to_string(),
+        _ => "^[/".to_string(),
     }
 }
 
@@ -408,7 +402,7 @@ fn fish_binding_token(token: &str) -> String {
             format!("\\e{}", &other[4..])
         }
         other if other.len() == 1 => other.to_string(),
-        _ => "\\cg\\cb".to_string(),
+        _ => "\\e/".to_string(),
     }
 }
 
@@ -449,5 +443,23 @@ mod tests {
         assert_eq!(zsh_binding("ctrl-g ctrl-b"), "^G^B");
         assert_eq!(fish_binding("ctrl-g ctrl-b"), "\\cg\\cb");
         assert_eq!(terminal_binding_key("ctrl-g ctrl-b"), None);
+    }
+
+    #[test]
+    fn renders_alt_slash_shell_bindings() {
+        assert_eq!(bash_binding("alt-/"), "\\e/");
+        assert_eq!(ble_bash_binding("alt-/"), "M-/");
+        assert_eq!(zsh_binding("alt-/"), "^[/");
+        assert_eq!(fish_binding("alt-/"), "\\e/");
+        assert_eq!(terminal_binding_key("alt-/"), None);
+    }
+
+    #[test]
+    fn shell_snippets_include_bf_helper() {
+        let config = AppConfig::default();
+        assert!(render_bash_shell(&config).contains("bf()"));
+        assert!(render_bash_shell(&config).contains("bindfinder()"));
+        assert!(render_zsh_shell(&config).contains("bf()"));
+        assert!(render_zsh_shell(&config).contains("bindfinder()"));
     }
 }

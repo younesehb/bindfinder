@@ -1,7 +1,11 @@
 # tmux Integration
 
-`bindfinder` works well inside `tmux` and supports both popup and split-pane
+`bindfinder` works well inside `tmux` and supports both split-pane and popup
 launch modes.
+
+The default is split mode. That matches the project's terminal-first baseline:
+full-screen or pane takeover everywhere, popup overlays only where explicitly
+enabled.
 
 ## Recommended Setup
 
@@ -35,7 +39,7 @@ If your tmux prefix is `C-a`, that means:
 Ctrl-a /
 ```
 
-## Split Mode
+## Split Mode (Default)
 
 When `integration.tmux.use_popup: false`, the generated binding looks like:
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 - 2026-03-12
+
+- add in-TUI argument prompts for commands with placeholders like `<branch>` or `<package>`
+- make bare `bindfinder` in an interactive shell use the shell-integrated picker path
+- keep CLI subcommands like `bindfinder --help`, `bindfinder doctor`, and `bindfinder reload` on the real binary path
+- add `bf` as a short shell alias for the picker path
+- tighten shell integration behavior and release-quality lint/test coverage
+
 ## 0.1.1 - 2026-03-12
 
 - add favorites, hidden items, and favorites-only filtering

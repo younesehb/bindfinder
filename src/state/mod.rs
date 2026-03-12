@@ -1,8 +1,4 @@
-use std::{
-    collections::HashSet,
-    env, fs,
-    path::PathBuf,
-};
+use std::{collections::HashSet, env, fs, path::PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};

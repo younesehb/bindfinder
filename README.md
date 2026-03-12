@@ -1,8 +1,12 @@
 # bindfinder
 
-`bindfinder` is a terminal command palette for shell, `tmux`, and SSH workflows.
-Open it, search for a tool like `tmux` or `git`, and insert the selected
-command back into your prompt.
+`bindfinder` helps you find commands and keybindings from the terminal.
+
+Open it, type a tool name like `git`, `tmux`, or `docker`, pick what you want,
+and insert it back into your prompt.
+
+If the command has placeholders like `<branch>` or `<package>`, `bindfinder`
+asks for them in the TUI before inserting the final command.
 
 ## Install
 
@@ -13,8 +17,13 @@ curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.s
 ```
 
 That installs the binary, installs the man page, writes the default config, and
-installs the tmux or shell integration automatically when the environment can be
-detected safely.
+sets up the shell integration automatically when it can detect your environment.
+
+Then reload your shell once:
+
+```bash
+source ~/.bashrc
+```
 
 From source:
 
@@ -29,26 +38,40 @@ bindfinder config init
 bindfinder install auto --write
 ```
 
-Reload your shell or tmux config once.
-
 ## Use
 
 ```bash
 bindfinder
 ```
 
-The TUI starts in search mode. Type immediately to filter, press `Enter` to
-select, `Esc` for normal mode, and `/` to return to search.
+Type immediately to filter. Press `Enter` to insert the selected command.
+
+Normal usage:
+
+- `bindfinder` opens the picker
+- type to search
+- `Enter` inserts the selected command
+- `Esc` switches to normal mode
+- `/` returns to search mode
+- placeholder commands open a small argument form before insertion
 
 Useful commands:
 
 ```bash
 bindfinder doctor
 bindfinder reload
+bindfinder install all --write
 bindfinder search tmux split
 bindfinder install man --write
 bindfinder navi import denisidoro/cheats
 ```
+
+Shell helpers:
+
+- typing `bindfinder` with no arguments in an interactive shell now uses the shell-integrated picker path
+- `bindfinder doctor` and other subcommands still go to the real binary
+- `bf` is kept as a short alias for the same shell-integrated path
+- the shell keybinding gives the best live in-prompt insertion flow
 
 ## Docs
 
@@ -63,6 +86,10 @@ bindfinder navi import denisidoro/cheats
 ## Notes
 
 - Linux and macOS are supported.
+- The default experience is full-screen in the current terminal.
+- tmux and terminal-specific overlays are optional enhancements.
+- The default shell binding is `Alt-/`.
+- The default tmux binding is `prefix + /`.
 - Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
 - `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
 - The installer script downloads release artifacts from GitHub, installs into `~/.local` by default, and runs first-time setup unless `--no-setup` is used.

@@ -1,3 +1,4 @@
+use std::process::Command as ProcessCommand;
 use std::{
     env,
     fs::{self, OpenOptions},
@@ -5,7 +6,6 @@ use std::{
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
-use std::process::Command as ProcessCommand;
 
 use anyhow::{Context, Result};
 use clap::{Args as ClapArgs, Parser, Subcommand, ValueEnum};
@@ -85,9 +85,16 @@ struct ConfigArgs {
 struct InstallArgs {
     #[arg(value_enum, help = "Integration target to render")]
     target: InstallTarget,
-    #[arg(long, help = "Write the generated snippet to the default config file for the target")]
+    #[arg(
+        long,
+        help = "Write the generated snippet to the default config file for the target"
+    )]
     write: bool,
-    #[arg(long, value_name = "PATH", help = "Write the generated snippet to an explicit file path")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Write the generated snippet to an explicit file path"
+    )]
     path: Option<PathBuf>,
 }
 
@@ -123,7 +130,10 @@ enum NaviCommand {
     List,
     /// Import a navi cheat repository into the local repo cache
     Import {
-        #[arg(value_name = "REPO", help = "Repository URL, SSH URL, or owner/repo shorthand")]
+        #[arg(
+            value_name = "REPO",
+            help = "Repository URL, SSH URL, or owner/repo shorthand"
+        )]
         repo: String,
     },
 }
@@ -140,6 +150,7 @@ enum ConfigCommand {
 #[derive(Debug, Clone, ValueEnum)]
 enum InstallTarget {
     Auto,
+    All,
     Tmux,
     Bash,
     Zsh,
@@ -162,7 +173,8 @@ pub fn run() -> Result<()> {
         Some(Command::Config(args)) => match args.command {
             ConfigCommand::Init { force } => {
                 let config = AppConfig::default();
-                let path = AppConfig::default_path().context("no config path could be determined")?;
+                let path =
+                    AppConfig::default_path().context("no config path could be determined")?;
                 if path.exists() && !force {
                     println!("{}", path.display());
                     return Ok(());
@@ -180,6 +192,7 @@ pub fn run() -> Result<()> {
             let env = EnvironmentInfo::detect();
             let target_name = match args.target {
                 InstallTarget::Auto => "auto",
+                InstallTarget::All => "all",
                 InstallTarget::Tmux => "tmux",
                 InstallTarget::Bash => "bash",
                 InstallTarget::Zsh => "zsh",
@@ -199,6 +212,26 @@ pub fn run() -> Result<()> {
                     println!("{}", path.display());
                 } else {
                     println!("{man_page}");
+                }
+                Ok(())
+            } else if matches!(args.target, InstallTarget::All) {
+                let targets = collect_applicable_targets(&env, &config);
+                if targets.is_empty() {
+                    println!("no supported integration targets detected");
+                    return Ok(());
+                }
+
+                for target in targets {
+                    let snippet = render_install_for_target(&config, &target);
+                    let path = default_install_path(&target)
+                        .context("no default install path for this target")?;
+                    if args.write {
+                        write_install_block(&path, &snippet)?;
+                        println!("{}", path.display());
+                    } else {
+                        println!("# {}", path.display());
+                        println!("{snippet}");
+                    }
                 }
                 Ok(())
             } else {
@@ -227,45 +260,41 @@ pub fn run() -> Result<()> {
         Some(Command::Reload) => {
             let config = AppConfig::load()?;
             let env = EnvironmentInfo::detect();
-            let target = env.choose_target(&config);
+            let targets = collect_applicable_targets(&env, &config);
 
-            match &target {
-                crate::integration::detect::IntegrationTarget::Plain => {
-                    println!("no reload action for the current environment");
-                    println!("run: bindfinder install auto --write");
-                }
-                crate::integration::detect::IntegrationTarget::Terminal(_) => {
-                    println!("terminal integration is snippet-only");
-                    println!("run: bindfinder install auto");
-                }
-                _ => {
-                    let snippet = render_install_for_target(&config, &target);
-                    let path = default_install_path(&target)
-                        .context("no default install path for this target")?;
-                    write_install_block(&path, &snippet)?;
+            if targets.is_empty() {
+                println!("no reload action for the current environment");
+                println!("run: bindfinder install auto --write");
+                return Ok(());
+            }
 
-                    match &target {
-                        crate::integration::detect::IntegrationTarget::Tmux => {
-                            let status = ProcessCommand::new("tmux")
-                                .arg("source-file")
-                                .arg(&path)
-                                .status();
-                            match status {
-                                Ok(status) if status.success() => {
-                                    println!("reloaded tmux config: {}", path.display());
-                                }
-                                Ok(_) | Err(_) => {
-                                    println!("updated tmux config: {}", path.display());
-                                    println!("run: tmux source-file {}", path.display());
-                                }
+            for target in targets {
+                let snippet = render_install_for_target(&config, &target);
+                let path = default_install_path(&target)
+                    .context("no default install path for this target")?;
+                write_install_block(&path, &snippet)?;
+
+                match &target {
+                    crate::integration::detect::IntegrationTarget::Tmux => {
+                        let status = ProcessCommand::new("tmux")
+                            .arg("source-file")
+                            .arg(&path)
+                            .status();
+                        match status {
+                            Ok(status) if status.success() => {
+                                println!("reloaded tmux config: {}", path.display());
+                            }
+                            Ok(_) | Err(_) => {
+                                println!("updated tmux config: {}", path.display());
+                                println!("run: tmux source-file {}", path.display());
                             }
                         }
-                        crate::integration::detect::IntegrationTarget::Shell(shell) => {
-                            println!("updated shell config: {}", path.display());
-                            println!("reload command: {}", shell_reload_hint(shell, &path));
-                        }
-                        _ => {}
                     }
+                    crate::integration::detect::IntegrationTarget::Shell(shell) => {
+                        println!("updated shell config: {}", path.display());
+                        println!("reload command: {}", shell_reload_hint(shell, &path));
+                    }
+                    _ => {}
                 }
             }
             Ok(())
@@ -523,12 +552,59 @@ fn repo_dir_name(repo: &str) -> String {
     name.strip_suffix(".git").unwrap_or(name).to_string()
 }
 
-fn shell_reload_hint(shell: &crate::integration::detect::ShellKind, path: &std::path::Path) -> String {
+fn shell_reload_hint(
+    shell: &crate::integration::detect::ShellKind,
+    path: &std::path::Path,
+) -> String {
     match shell {
         crate::integration::detect::ShellKind::Fish => format!("source {}", path.display()),
-        crate::integration::detect::ShellKind::Bash | crate::integration::detect::ShellKind::Zsh => {
+        crate::integration::detect::ShellKind::Bash
+        | crate::integration::detect::ShellKind::Zsh => {
             format!("source {}", path.display())
         }
         crate::integration::detect::ShellKind::Unknown(_) => format!("source {}", path.display()),
     }
+}
+
+fn collect_applicable_targets(
+    env: &EnvironmentInfo,
+    config: &AppConfig,
+) -> Vec<crate::integration::detect::IntegrationTarget> {
+    let mut targets = Vec::new();
+
+    if config.integration.tmux.enabled && env.inside_tmux {
+        targets.push(crate::integration::detect::IntegrationTarget::Tmux);
+    }
+
+    if config.integration.shell.enabled {
+        if let Some(shell) = env.shell.clone() {
+            match shell {
+                crate::integration::detect::ShellKind::Bash
+                | crate::integration::detect::ShellKind::Zsh
+                | crate::integration::detect::ShellKind::Fish => {
+                    targets.push(crate::integration::detect::IntegrationTarget::Shell(shell));
+                }
+                crate::integration::detect::ShellKind::Unknown(_) => {}
+            }
+        }
+    }
+
+    if targets.is_empty() {
+        match env.choose_target(config) {
+            crate::integration::detect::IntegrationTarget::Tmux => {
+                targets.push(crate::integration::detect::IntegrationTarget::Tmux)
+            }
+            crate::integration::detect::IntegrationTarget::Shell(shell) => match shell {
+                crate::integration::detect::ShellKind::Bash
+                | crate::integration::detect::ShellKind::Zsh
+                | crate::integration::detect::ShellKind::Fish => {
+                    targets.push(crate::integration::detect::IntegrationTarget::Shell(shell))
+                }
+                crate::integration::detect::ShellKind::Unknown(_) => {}
+            },
+            _ => {}
+        }
+    }
+
+    targets
 }

@@ -1,8 +1,8 @@
 [package]
 name = "bindfinder"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
-description = "Terminal-first command reference browser for SSH and tmux workflows"
+description = "Terminal command palette for commands and keybindings"
 license = "MIT"
 
 [dependencies]

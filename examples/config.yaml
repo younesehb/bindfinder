@@ -45,18 +45,18 @@ keybindings:
 
 integration:
   mode: "auto"
-  launch_key: "ctrl-g ctrl-b"
+  launch_key: "alt-/"
   tmux:
     enabled: true
     key: "/"
-    use_popup: true
+    use_popup: false
     popup_width: "80%"
     popup_height: "80%"
     debug: false
   shell:
     enabled: true
     preferred: "auto"
-    binding: "ctrl-g ctrl-b"
+    binding: "alt-/"
   terminal:
     enabled: false
     preferred: "auto"

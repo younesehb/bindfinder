@@ -142,6 +142,9 @@ mod tests {
             terminal: Some(TerminalKind::Kitty),
         };
         let config = AppConfig::default();
-        assert_eq!(env.choose_target(&config), IntegrationTarget::Shell(ShellKind::Bash));
+        assert_eq!(
+            env.choose_target(&config),
+            IntegrationTarget::Shell(ShellKind::Bash)
+        );
     }
 }

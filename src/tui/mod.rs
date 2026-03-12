@@ -4,17 +4,15 @@ use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
-    terminal::{
-        EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
-    },
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
-    Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Layout},
     style::{Modifier, Style},
     text::{Line, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
+    Terminal,
 };
 
 use crate::{
@@ -62,17 +60,6 @@ fn run_app(
 
     loop {
         terminal.draw(|frame| {
-            let preview = build_preview(app.selected_entry().cloned(), app.catalog.is_empty(), &app.state);
-            let result_count = app.filtered.len();
-            let hidden_flag = if app.show_hidden { "  [hidden visible]" } else { "" };
-            let favorites_flag = if app.favorites_only { "  [favorites only]" } else { "" };
-            let title = format!(
-                "bindfinder  {} entries  {} matches{}{}",
-                app.catalog.len(),
-                result_count,
-                hidden_flag,
-                favorites_flag
-            );
             let areas = Layout::vertical([
                 Constraint::Length(3),
                 Constraint::Min(1),
@@ -80,56 +67,118 @@ fn run_app(
             ])
             .split(frame.area());
 
-            let prefix = match app.input_mode {
-                InputMode::Normal => "Search",
-                InputMode::Search => "Search *",
-            };
-            let content = if app.query.is_empty() {
-                format!("{prefix}: ")
+            if let Some(prompt) = app.argument_prompt.as_ref() {
+                let title = format!("bindfinder  arguments  {} field(s)", prompt.fields.len());
+                let selected_field = prompt
+                    .fields
+                    .get(prompt.selected)
+                    .map(|field| field.name.as_str())
+                    .unwrap_or("none");
+                let content = format!("Argument: {selected_field}");
+                frame.render_widget(
+                    Paragraph::new(content)
+                        .block(Block::default().borders(Borders::ALL).title(title)),
+                    areas[0],
+                );
+
+                let left = app.config.settings.result_list_width_percent;
+                let right = 100 - left;
+                let body =
+                    Layout::horizontal([Constraint::Percentage(left), Constraint::Percentage(right)])
+                        .split(areas[1]);
+
+                let mut argument_state = ListState::default();
+                argument_state.select(Some(prompt.selected));
+                frame.render_stateful_widget(
+                    List::new(build_argument_items(prompt))
+                        .block(Block::default().borders(Borders::ALL).title("Arguments"))
+                        .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+                        .highlight_symbol("> "),
+                    body[0],
+                    &mut argument_state,
+                );
+
+                let preview_widget = Paragraph::new(build_argument_preview(prompt))
+                    .block(Block::default().borders(Borders::ALL).title("Command"));
+                if app.config.settings.wrap_preview {
+                    frame.render_widget(preview_widget.wrap(Wrap { trim: false }), body[1]);
+                } else {
+                    frame.render_widget(preview_widget, body[1]);
+                }
+
+                if app.config.settings.show_footer {
+                    frame.render_widget(
+                        Paragraph::new(
+                            "Arguments: type to replace  Tab/Down next  Shift-Tab/Up prev  Ctrl-u clear  Enter insert  Esc cancel",
+                        ),
+                        areas[2],
+                    );
+                }
             } else {
-                format!("{prefix}: {}", app.query)
-            };
-            frame.render_widget(
-                Paragraph::new(content)
-                    .block(Block::default().borders(Borders::ALL).title(title)),
-                areas[0],
-            );
+                let preview =
+                    build_preview(app.selected_entry().cloned(), app.catalog.is_empty(), &app.state);
+                let result_count = app.filtered.len();
+                let hidden_flag = if app.show_hidden { "  [hidden visible]" } else { "" };
+                let favorites_flag = if app.favorites_only { "  [favorites only]" } else { "" };
+                let title = format!(
+                    "bindfinder  {} entries  {} matches{}{}",
+                    app.catalog.len(),
+                    result_count,
+                    hidden_flag,
+                    favorites_flag
+                );
 
-            let left = app.config.settings.result_list_width_percent;
-            let right = 100 - left;
-            let body = Layout::horizontal([Constraint::Percentage(left), Constraint::Percentage(right)])
-                .split(areas[1]);
-
-            frame.render_stateful_widget(
-                List::new(build_items(&app.filtered, &app.state))
-                    .block(Block::default().borders(Borders::ALL).title("Results"))
-                    .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
-                    .highlight_symbol("> "),
-                body[0],
-                &mut app.list_state,
-            );
-
-            let preview_widget =
-                Paragraph::new(preview).block(Block::default().borders(Borders::ALL).title("Preview"));
-            if app.config.settings.wrap_preview {
-                frame.render_widget(preview_widget.wrap(Wrap { trim: false }), body[1]);
-            } else {
-                frame.render_widget(preview_widget, body[1]);
-            }
-
-            if app.config.settings.show_footer {
-                let footer = match app.input_mode {
-                    InputMode::Normal => {
-                        "Normal: j/k move  Ctrl-d/Ctrl-u page  gg/G ends  / search  z hidden  m favorites  f/x entry  F/X tool  Enter select"
-                    }
-                    InputMode::Search => {
-                        "Search: type filter  Up/Down move  Ctrl-d/Ctrl-u page  Enter select  Esc normal"
-                    }
+                let prefix = match app.input_mode {
+                    InputMode::Normal => "Search",
+                    InputMode::Search => "Search *",
+                    InputMode::Arguments => "Argument",
+                };
+                let content = if app.query.is_empty() {
+                    format!("{prefix}: ")
+                } else {
+                    format!("{prefix}: {}", app.query)
                 };
                 frame.render_widget(
-                    Paragraph::new(footer),
-                    areas[2],
+                    Paragraph::new(content)
+                        .block(Block::default().borders(Borders::ALL).title(title)),
+                    areas[0],
                 );
+
+                let left = app.config.settings.result_list_width_percent;
+                let right = 100 - left;
+                let body =
+                    Layout::horizontal([Constraint::Percentage(left), Constraint::Percentage(right)])
+                        .split(areas[1]);
+
+                frame.render_stateful_widget(
+                    List::new(build_items(&app.filtered, &app.state))
+                        .block(Block::default().borders(Borders::ALL).title("Results"))
+                        .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+                        .highlight_symbol("> "),
+                    body[0],
+                    &mut app.list_state,
+                );
+
+                let preview_widget = Paragraph::new(preview)
+                    .block(Block::default().borders(Borders::ALL).title("Preview"));
+                if app.config.settings.wrap_preview {
+                    frame.render_widget(preview_widget.wrap(Wrap { trim: false }), body[1]);
+                } else {
+                    frame.render_widget(preview_widget, body[1]);
+                }
+
+                if app.config.settings.show_footer {
+                    let footer = match app.input_mode {
+                        InputMode::Normal => {
+                            "Normal: j/k move  Ctrl-d/Ctrl-u page  gg/G ends  / search  z hidden  m favorites  f/x entry  F/X tool  Enter select"
+                        }
+                        InputMode::Search => {
+                            "Search: type filter  Up/Down move  Ctrl-d/Ctrl-u page  Enter select  Esc normal"
+                        }
+                        InputMode::Arguments => "",
+                    };
+                    frame.render_widget(Paragraph::new(footer), areas[2]);
+                }
             }
         })?;
 
@@ -161,12 +210,35 @@ struct App {
     pending_sequence: Vec<crate::config::KeyBinding>,
     show_hidden: bool,
     favorites_only: bool,
+    argument_prompt: Option<ArgumentPrompt>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum InputMode {
     Normal,
     Search,
+    Arguments,
+}
+
+#[derive(Clone)]
+struct ArgumentPrompt {
+    template: Vec<CommandPart>,
+    fields: Vec<ArgumentField>,
+    selected: usize,
+    previous_mode: InputMode,
+}
+
+#[derive(Clone)]
+struct ArgumentField {
+    name: String,
+    value: String,
+    edited: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum CommandPart {
+    Text(String),
+    Placeholder(String),
 }
 
 impl App {
@@ -182,6 +254,7 @@ impl App {
             pending_sequence: Vec::new(),
             show_hidden: false,
             favorites_only: false,
+            argument_prompt: None,
         };
         app.refresh();
         app
@@ -190,7 +263,12 @@ impl App {
     fn refresh(&mut self) {
         self.filtered = self
             .catalog
-            .filter_with_state(&self.query, &self.state, self.show_hidden, self.favorites_only)
+            .filter_with_state(
+                &self.query,
+                &self.state,
+                self.show_hidden,
+                self.favorites_only,
+            )
             .into_iter()
             .cloned()
             .collect();
@@ -213,6 +291,7 @@ impl App {
         match self.input_mode {
             InputMode::Normal => self.handle_normal_key(key),
             InputMode::Search => self.handle_search_key(key),
+            InputMode::Arguments => self.handle_argument_key(key),
         }
     }
 
@@ -405,6 +484,65 @@ impl App {
         None
     }
 
+    fn handle_argument_key(&mut self, key: KeyEvent) -> Option<String> {
+        let Some(prompt) = self.argument_prompt.as_mut() else {
+            self.input_mode = InputMode::Search;
+            return None;
+        };
+
+        match (key.code, key.modifiers) {
+            (KeyCode::Esc, _) => {
+                self.input_mode = prompt.previous_mode;
+                self.argument_prompt = None;
+            }
+            _ if self.config.keybindings.matches_select(key) => {
+                return self.submit_argument_prompt();
+            }
+            (KeyCode::Tab, _) | (KeyCode::Down, _) => {
+                if !prompt.fields.is_empty() {
+                    prompt.selected = (prompt.selected + 1) % prompt.fields.len();
+                }
+            }
+            (KeyCode::BackTab, _) | (KeyCode::Up, _) => {
+                if !prompt.fields.is_empty() {
+                    prompt.selected = if prompt.selected == 0 {
+                        prompt.fields.len() - 1
+                    } else {
+                        prompt.selected - 1
+                    };
+                }
+            }
+            (KeyCode::Backspace, _) => {
+                if let Some(field) = prompt.fields.get_mut(prompt.selected) {
+                    if !field.edited {
+                        field.value.clear();
+                        field.edited = true;
+                    } else {
+                        field.value.pop();
+                    }
+                }
+            }
+            (KeyCode::Char(ch), KeyModifiers::NONE | KeyModifiers::SHIFT) => {
+                if let Some(field) = prompt.fields.get_mut(prompt.selected) {
+                    if !field.edited {
+                        field.value.clear();
+                        field.edited = true;
+                    }
+                    field.value.push(ch);
+                }
+            }
+            _ if self.config.keybindings.matches_clear_query(key) => {
+                if let Some(field) = prompt.fields.get_mut(prompt.selected) {
+                    field.value.clear();
+                    field.edited = true;
+                }
+            }
+            _ => {}
+        }
+
+        None
+    }
+
     fn move_selection(&mut self, delta: isize) {
         if self.filtered.is_empty() {
             self.list_state.select(None);
@@ -426,7 +564,8 @@ impl App {
         if self.filtered.is_empty() {
             self.list_state.select(None);
         } else {
-            self.list_state.select(Some(index.min(self.filtered.len() - 1)));
+            self.list_state
+                .select(Some(index.min(self.filtered.len() - 1)));
         }
     }
 
@@ -488,13 +627,45 @@ impl App {
         }
     }
 
-    fn selected_output(&self) -> Option<String> {
-        self.selected_entry().map(|item| {
-            item.entry
-                .command
-                .clone()
-                .unwrap_or_else(|| item.entry.title.clone())
-        })
+    fn selected_output(&mut self) -> Option<String> {
+        let item = self.selected_entry()?.clone();
+        let command = item
+            .entry
+            .command
+            .clone()
+            .unwrap_or_else(|| item.entry.title.clone());
+        let template = parse_command_template(&command);
+        let fields: Vec<ArgumentField> = template
+            .iter()
+            .filter_map(|part| match part {
+                CommandPart::Placeholder(name) => Some(ArgumentField {
+                    name: name.clone(),
+                    value: name.clone(),
+                    edited: false,
+                }),
+                CommandPart::Text(_) => None,
+            })
+            .collect();
+
+        if fields.is_empty() {
+            Some(render_command_template(&template, &[]))
+        } else {
+            self.argument_prompt = Some(ArgumentPrompt {
+                template,
+                fields,
+                selected: 0,
+                previous_mode: self.input_mode,
+            });
+            self.input_mode = InputMode::Arguments;
+            None
+        }
+    }
+
+    fn submit_argument_prompt(&mut self) -> Option<String> {
+        let prompt = self.argument_prompt.take()?;
+        let values: Vec<String> = prompt.fields.into_iter().map(|field| field.value).collect();
+        self.input_mode = prompt.previous_mode;
+        Some(render_command_template(&prompt.template, &values))
     }
 }
 
@@ -522,7 +693,11 @@ fn build_items<'a>(entries: &'a [CatalogEntry], state: &'a UserState) -> Vec<Lis
         .collect()
 }
 
-fn build_preview(selected: Option<CatalogEntry>, catalog_is_empty: bool, state: &UserState) -> Text<'static> {
+fn build_preview(
+    selected: Option<CatalogEntry>,
+    catalog_is_empty: bool,
+    state: &UserState,
+) -> Text<'static> {
     if catalog_is_empty {
         return Text::from("No built-in packs are available.");
     }
@@ -580,7 +755,10 @@ fn build_preview(selected: Option<CatalogEntry>, catalog_is_empty: bool, state: 
     }
 
     if !item.entry.aliases.is_empty() {
-        lines.push(Line::raw(format!("Aliases: {}", item.entry.aliases.join(", "))));
+        lines.push(Line::raw(format!(
+            "Aliases: {}",
+            item.entry.aliases.join(", ")
+        )));
     }
 
     lines.push(Line::raw(String::new()));
@@ -592,6 +770,48 @@ fn build_preview(selected: Option<CatalogEntry>, catalog_is_empty: bool, state: 
     Text::from(lines)
 }
 
+fn build_argument_items(prompt: &ArgumentPrompt) -> Vec<ListItem<'static>> {
+    prompt
+        .fields
+        .iter()
+        .map(|field| {
+            ListItem::new(vec![
+                Line::raw(field.name.clone()),
+                Line::raw(format!("  {}", field.value)),
+            ])
+        })
+        .collect()
+}
+
+fn build_argument_preview(prompt: &ArgumentPrompt) -> Text<'static> {
+    let rendered = render_command_template(
+        &prompt.template,
+        &prompt
+            .fields
+            .iter()
+            .map(|field| field.value.clone())
+            .collect::<Vec<_>>(),
+    );
+
+    let mut lines = vec![
+        Line::raw("Fill arguments, then press Enter to insert the command."),
+        Line::raw("Leave values unchanged to keep the default placeholder text."),
+        Line::raw(String::new()),
+        Line::raw("Rendered command:"),
+        Line::raw(rendered),
+    ];
+
+    if !prompt.fields.is_empty() {
+        lines.push(Line::raw(String::new()));
+        lines.push(Line::raw("Current fields:"));
+        for field in &prompt.fields {
+            lines.push(Line::raw(format!("- {} = {}", field.name, field.value)));
+        }
+    }
+
+    Text::from(lines)
+}
+
 fn item_marker(item: &CatalogEntry, state: &UserState) -> &'static str {
     let qualified_id = item.qualified_id();
     if state.is_entry_favorite(&qualified_id) || state.is_tool_favorite(&item.tool) {
@@ -599,6 +819,70 @@ fn item_marker(item: &CatalogEntry, state: &UserState) -> &'static str {
     } else {
         " "
     }
+}
+
+fn parse_command_template(input: &str) -> Vec<CommandPart> {
+    let mut parts = Vec::new();
+    let mut current_text = String::new();
+    let mut chars = input.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '<' {
+            let mut placeholder = String::new();
+            let mut found_end = false;
+
+            while let Some(&next) = chars.peek() {
+                chars.next();
+                if next == '>' {
+                    found_end = true;
+                    break;
+                }
+                placeholder.push(next);
+            }
+
+            if found_end && !placeholder.is_empty() {
+                if !current_text.is_empty() {
+                    parts.push(CommandPart::Text(std::mem::take(&mut current_text)));
+                }
+                parts.push(CommandPart::Placeholder(placeholder));
+            } else {
+                current_text.push('<');
+                current_text.push_str(&placeholder);
+                if found_end {
+                    current_text.push('>');
+                }
+            }
+        } else {
+            current_text.push(ch);
+        }
+    }
+
+    if !current_text.is_empty() {
+        parts.push(CommandPart::Text(current_text));
+    }
+
+    parts
+}
+
+fn render_command_template(template: &[CommandPart], values: &[String]) -> String {
+    let mut output = String::new();
+    let mut next_value = 0usize;
+
+    for part in template {
+        match part {
+            CommandPart::Text(text) => output.push_str(text),
+            CommandPart::Placeholder(name) => {
+                let value = values
+                    .get(next_value)
+                    .cloned()
+                    .unwrap_or_else(|| name.clone());
+                output.push_str(&value);
+                next_value += 1;
+            }
+        }
+    }
+
+    output
 }
 
 #[cfg(test)]
@@ -639,5 +923,134 @@ mod tests {
         assert!(result.is_none());
         assert_eq!(app.query, "m");
         assert!(!app.favorites_only);
+    }
+
+    #[test]
+    fn render_command_template_replaces_placeholders() {
+        let template = parse_command_template("apt install <package-name>");
+        assert_eq!(
+            render_command_template(&template, &["package-name".to_string()]),
+            "apt install package-name"
+        );
+    }
+
+    #[test]
+    fn selected_output_enters_argument_mode_for_placeholder_commands() {
+        let catalog = Catalog::from_packs(vec![Pack {
+            pack: PackMeta {
+                id: "test-pack".to_string(),
+                tool: "apt".to_string(),
+                title: "apt".to_string(),
+                version: "0.1.0".to_string(),
+                source: "test".to_string(),
+            },
+            entries: vec![Entry {
+                id: "install-package".to_string(),
+                entry_type: EntryType::Command,
+                title: "Install package".to_string(),
+                keys: None,
+                command: Some("apt install <package-name>".to_string()),
+                description: "Install a package".to_string(),
+                examples: Vec::new(),
+                tags: Vec::new(),
+                aliases: Vec::new(),
+            }],
+        }])
+        .expect("catalog should build");
+
+        let mut app = App::new(catalog, AppConfig::default(), UserState::default());
+        let result = app.selected_output();
+
+        assert!(result.is_none());
+        assert_eq!(app.input_mode, InputMode::Arguments);
+        let prompt = app.argument_prompt.expect("argument prompt should exist");
+        assert_eq!(prompt.fields.len(), 1);
+        assert_eq!(prompt.fields[0].value, "package-name");
+    }
+
+    #[test]
+    fn render_command_template_handles_multiple_placeholders() {
+        let template = parse_command_template("docker exec -it <container> <command>");
+        assert_eq!(
+            render_command_template(&template, &["container".to_string(), "command".to_string()]),
+            "docker exec -it container command"
+        );
+    }
+
+    #[test]
+    fn submit_argument_prompt_uses_edited_values() {
+        let catalog = Catalog::from_packs(vec![Pack {
+            pack: PackMeta {
+                id: "test-pack".to_string(),
+                tool: "docker".to_string(),
+                title: "docker".to_string(),
+                version: "0.1.0".to_string(),
+                source: "test".to_string(),
+            },
+            entries: vec![Entry {
+                id: "exec".to_string(),
+                entry_type: EntryType::Command,
+                title: "Docker exec".to_string(),
+                keys: None,
+                command: Some("docker exec -it <container> <command>".to_string()),
+                description: "Run a command in a container".to_string(),
+                examples: Vec::new(),
+                tags: Vec::new(),
+                aliases: Vec::new(),
+            }],
+        }])
+        .expect("catalog should build");
+
+        let mut app = App::new(catalog, AppConfig::default(), UserState::default());
+        assert!(app.selected_output().is_none());
+
+        let prompt = app
+            .argument_prompt
+            .as_mut()
+            .expect("argument prompt should exist");
+        prompt.fields[0].value = "web".to_string();
+        prompt.fields[0].edited = true;
+        prompt.fields[1].value = "bash".to_string();
+        prompt.fields[1].edited = true;
+
+        let output = app.submit_argument_prompt();
+        assert_eq!(output.as_deref(), Some("docker exec -it web bash"));
+        assert_eq!(app.input_mode, InputMode::Search);
+        assert!(app.argument_prompt.is_none());
+    }
+
+    #[test]
+    fn argument_prompt_cancel_restores_previous_mode() {
+        let catalog = Catalog::from_packs(vec![Pack {
+            pack: PackMeta {
+                id: "test-pack".to_string(),
+                tool: "apt".to_string(),
+                title: "apt".to_string(),
+                version: "0.1.0".to_string(),
+                source: "test".to_string(),
+            },
+            entries: vec![Entry {
+                id: "install-package".to_string(),
+                entry_type: EntryType::Command,
+                title: "Install package".to_string(),
+                keys: None,
+                command: Some("apt install <package-name>".to_string()),
+                description: "Install a package".to_string(),
+                examples: Vec::new(),
+                tags: Vec::new(),
+                aliases: Vec::new(),
+            }],
+        }])
+        .expect("catalog should build");
+
+        let mut app = App::new(catalog, AppConfig::default(), UserState::default());
+        app.input_mode = InputMode::Normal;
+        assert!(app.selected_output().is_none());
+        assert_eq!(app.input_mode, InputMode::Arguments);
+
+        let result = app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(result.is_none());
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert!(app.argument_prompt.is_none());
     }
 }
