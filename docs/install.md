@@ -4,10 +4,35 @@
 
 Current supported install paths:
 
+- `curl | sh` installer from GitHub
 - `cargo install`
 - Homebrew from a local checkout
 - prebuilt release tarballs from GitHub Releases
 - local man page install with `bindfinder install man --write`
+
+## Recommended
+
+Install the latest release into `~/.local`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+```
+
+The installer:
+
+- detects the current platform
+- downloads the matching release archive from GitHub
+- installs `bindfinder` into `~/.local/bin`
+- installs the man page into `~/.local/share/man/man1`
+
+Useful overrides:
+
+```bash
+BINDFINDER_VERSION=0.1.1 curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+```
+
+If your shell does not already include `~/.local/bin` on `PATH`, add it first.
 
 ## Cargo
 

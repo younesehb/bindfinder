@@ -6,16 +6,16 @@ command back into your prompt.
 
 ## Install
 
+Recommended:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.sh | sh
+```
+
 From source:
 
 ```bash
 cargo install --path .
-```
-
-With Homebrew from a local checkout:
-
-```bash
-brew install --build-from-source ./Formula/bindfinder.rb
 ```
 
 Then initialize config and install the recommended integration:
@@ -60,4 +60,5 @@ bindfinder navi import denisidoro/cheats
 - Linux and macOS are supported.
 - Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
 - `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
+- The installer script downloads release artifacts from GitHub and installs into `~/.local` by default.
 - The repository ships a Homebrew formula in [Formula/bindfinder.rb](./Formula/bindfinder.rb).

@@ -1,0 +1,123 @@
+#!/bin/sh
+set -eu
+
+REPO="${BINDFINDER_REPO:-younesehb/bindfinder}"
+VERSION="${BINDFINDER_VERSION:-latest}"
+INSTALL_ROOT="${BINDFINDER_INSTALL_ROOT:-$HOME/.local}"
+BIN_DIR="${BINDFINDER_BIN_DIR:-$INSTALL_ROOT/bin}"
+MAN_DIR="${BINDFINDER_MAN_DIR:-$INSTALL_ROOT/share/man/man1}"
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "bindfinder installer: missing required command: $1" >&2
+    exit 1
+  }
+}
+
+detect_target() {
+  os="$(uname -s)"
+  arch="$(uname -m)"
+
+  case "$os" in
+    Linux) os="unknown-linux-gnu" ;;
+    Darwin) os="apple-darwin" ;;
+    *)
+      echo "bindfinder installer: unsupported operating system: $os" >&2
+      exit 1
+      ;;
+  esac
+
+  case "$arch" in
+    x86_64|amd64) arch="x86_64" ;;
+    arm64|aarch64) arch="aarch64" ;;
+    *)
+      echo "bindfinder installer: unsupported architecture: $arch" >&2
+      exit 1
+      ;;
+  esac
+
+  target="${arch}-${os}"
+
+  case "$target" in
+    x86_64-unknown-linux-gnu|aarch64-apple-darwin)
+      printf '%s\n' "$target"
+      ;;
+    *)
+      echo "bindfinder installer: no prebuilt release for $target" >&2
+      echo "Use cargo install or build from source on this platform." >&2
+      exit 1
+      ;;
+  esac
+}
+
+resolve_version() {
+  if [ "$VERSION" != "latest" ]; then
+    printf '%s\n' "$VERSION"
+    return
+  fi
+
+  api_url="https://api.github.com/repos/$REPO/releases/latest"
+  resolved="$(curl -fsSL "$api_url" | grep '"tag_name"' | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')"
+  if [ -z "$resolved" ]; then
+    echo "bindfinder installer: failed to resolve latest release version" >&2
+    exit 1
+  fi
+  printf '%s\n' "${resolved#v}"
+}
+
+install_file() {
+  src="$1"
+  dst="$2"
+  mode="$3"
+  if command -v install >/dev/null 2>&1; then
+    install -m "$mode" "$src" "$dst"
+  else
+    cp "$src" "$dst"
+    chmod "$mode" "$dst"
+  fi
+}
+
+need_cmd curl
+need_cmd tar
+need_cmd uname
+need_cmd mktemp
+
+target="$(detect_target)"
+version="$(resolve_version)"
+archive="bindfinder-${version}-${target}.tar.gz"
+url="https://github.com/$REPO/releases/download/v${version}/${archive}"
+
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT INT TERM
+
+echo "bindfinder installer"
+echo "  repo:    $REPO"
+echo "  version: $version"
+echo "  target:  $target"
+echo "  url:     $url"
+
+curl -fL "$url" -o "$tmpdir/$archive"
+tar -xzf "$tmpdir/$archive" -C "$tmpdir"
+
+archive_dir="$tmpdir/bindfinder-${version}-${target}"
+if [ ! -d "$archive_dir" ]; then
+  echo "bindfinder installer: archive layout was not recognized" >&2
+  exit 1
+fi
+
+mkdir -p "$BIN_DIR" "$MAN_DIR"
+install_file "$archive_dir/bindfinder" "$BIN_DIR/bindfinder" 0755
+
+if [ -f "$archive_dir/man/man1/bindfinder.1" ]; then
+  install_file "$archive_dir/man/man1/bindfinder.1" "$MAN_DIR/bindfinder.1" 0644
+fi
+
+echo
+echo "Installed:"
+echo "  binary: $BIN_DIR/bindfinder"
+echo "  man:    $MAN_DIR/bindfinder.1"
+echo
+echo "Next steps:"
+echo "  1. Ensure $BIN_DIR is on your PATH"
+echo "  2. Run: bindfinder config init"
+echo "  3. Run: bindfinder install auto --write"

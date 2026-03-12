@@ -43,7 +43,7 @@ jobs:
           ARCHIVE_DIR="dist/bindfinder-${VERSION}-${{ matrix.archive_suffix }}"
           mkdir -p "${ARCHIVE_DIR}"
           cp "target/${{ matrix.target }}/release/bindfinder" "${ARCHIVE_DIR}/"
-          cp README.md LICENSE CHANGELOG.md "${ARCHIVE_DIR}/"
+          cp README.md LICENSE CHANGELOG.md install.sh "${ARCHIVE_DIR}/"
           mkdir -p "${ARCHIVE_DIR}/man/man1"
           cp man/bindfinder.1 "${ARCHIVE_DIR}/man/man1/"
           tar -C dist -czf "${ARCHIVE_DIR}.tar.gz" "bindfinder-${VERSION}-${{ matrix.archive_suffix }}"
