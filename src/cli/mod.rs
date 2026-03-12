@@ -129,7 +129,10 @@ enum NaviCommand {
 #[derive(Debug, Subcommand)]
 enum ConfigCommand {
     #[command(about = "Write the default config file to the standard config path")]
-    Init,
+    Init {
+        #[arg(long, help = "Overwrite an existing config file")]
+        force: bool,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -155,9 +158,13 @@ pub fn run() -> Result<()> {
     match args.command {
         None => tui::run(),
         Some(Command::Config(args)) => match args.command {
-            ConfigCommand::Init => {
+            ConfigCommand::Init { force } => {
                 let config = AppConfig::default();
                 let path = AppConfig::default_path().context("no config path could be determined")?;
+                if path.exists() && !force {
+                    println!("{}", path.display());
+                    return Ok(());
+                }
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent)?;
                 }

@@ -13,7 +13,8 @@ curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.s
 ```
 
 That installs the binary, installs the man page, writes the default config, and
-installs the recommended shell or tmux integration automatically.
+installs the tmux or shell integration automatically when the environment can be
+detected safely.
 
 From source:
 

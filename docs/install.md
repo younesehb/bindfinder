@@ -25,7 +25,7 @@ The installer:
 - installs `bindfinder` into `~/.local/bin`
 - installs the man page into `~/.local/share/man/man1`
 - writes the default config with `bindfinder config init`
-- installs the recommended shell or tmux integration with `bindfinder install auto --write`
+- installs tmux, bash, zsh, or fish integration automatically when the current environment can be detected safely
 
 Useful overrides:
 
@@ -37,6 +37,8 @@ curl -fsSL https://raw.githubusercontent.com/younesehb/bindfinder/main/install.s
 
 If your shell does not already include `~/.local/bin` on `PATH`, add it first.
 After setup, reload your shell or tmux config once.
+If the installer cannot determine the right shell integration target, it leaves
+the binary installed and prints the follow-up command to run manually.
 
 ## Cargo
 

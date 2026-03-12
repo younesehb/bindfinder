@@ -109,6 +109,50 @@ install_file() {
   fi
 }
 
+basename_of() {
+  value="$1"
+  value="${value%/}"
+  value="${value##*/}"
+  printf '%s\n' "$value"
+}
+
+detect_setup_target() {
+  if [ -n "${TMUX:-}" ]; then
+    printf '%s\n' "tmux"
+    return
+  fi
+
+  shell_name="$(basename_of "${SHELL:-}")"
+  case "$shell_name" in
+    bash|zsh|fish)
+      printf '%s\n' "$shell_name"
+      ;;
+    *)
+      printf '%s\n' ""
+      ;;
+  esac
+}
+
+run_setup() {
+  target="$1"
+
+  "$BIN_DIR/bindfinder" config init
+
+  if [ -n "$target" ]; then
+    "$BIN_DIR/bindfinder" install "$target" --write
+  else
+    echo "bindfinder installer: skipping integration setup because the shell could not be detected safely." >&2
+    echo "Run 'bindfinder install auto --write' after adding $BIN_DIR to PATH." >&2
+  fi
+}
+
+path_contains_dir() {
+  case ":${PATH:-}:" in
+    *:"$1":*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 need_cmd curl
 need_cmd tar
 need_cmd uname
@@ -146,8 +190,8 @@ fi
 
 if [ "$SETUP" -eq 1 ]; then
   echo "Running first-time setup..."
-  "$BIN_DIR/bindfinder" config init
-  "$BIN_DIR/bindfinder" install auto --write
+  setup_target="$(detect_setup_target)"
+  run_setup "$setup_target"
 fi
 
 echo
@@ -156,7 +200,11 @@ echo "  binary: $BIN_DIR/bindfinder"
 echo "  man:    $MAN_DIR/bindfinder.1"
 echo
 echo "Next steps:"
-echo "  1. Ensure $BIN_DIR is on your PATH"
+if path_contains_dir "$BIN_DIR"; then
+  echo "  1. $BIN_DIR is already on your PATH"
+else
+  echo "  1. Ensure $BIN_DIR is on your PATH"
+fi
 if [ "$SETUP" -eq 1 ]; then
   echo "  2. Reload your shell or tmux config once"
   echo "  3. Run: bindfinder"
