@@ -755,10 +755,11 @@ fn validate_tmux_key_syntax(value: &str) -> Result<()> {
         return Ok(());
     }
 
-    if normalized.starts_with("ctrl-") || normalized.starts_with("alt-") || normalized.starts_with("shift-") {
-        bail!(
-            "integration.tmux.key uses tmux syntax like C-] or /, not shell syntax like ctrl-]"
-        );
+    if normalized.starts_with("ctrl-")
+        || normalized.starts_with("alt-")
+        || normalized.starts_with("shift-")
+    {
+        bail!("integration.tmux.key uses tmux syntax like C-] or /, not shell syntax like ctrl-]");
     }
 
     Ok(())

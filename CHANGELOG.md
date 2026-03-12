@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.14 - 2026-03-13
+
+- fix the zsh shell integration on macOS and other zsh setups by avoiding the read-only `status` variable name
+
 ## 0.1.13 - 2026-03-13
 
 - improve the installer output with clearer step-by-step progress messages
