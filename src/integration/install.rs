@@ -32,7 +32,7 @@ pub fn render_man_page() -> &'static str {
     include_str!("../../man/bindfinder.1")
 }
 
-pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo) -> String {
+pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo, include_snippet: bool) -> String {
     let target = env.choose_target(config);
     let shell = env
         .shell
@@ -45,7 +45,7 @@ pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo) -> String {
         .map(format_terminal)
         .unwrap_or_else(|| "unknown".to_string());
 
-    let lines = vec![
+    let mut lines = vec![
         format!("mode: {}", format_mode(&config.integration.mode)),
         format!("inside_tmux: {}", env.inside_tmux),
         format!("over_ssh: {}", env.over_ssh),
@@ -53,10 +53,13 @@ pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo) -> String {
         format!("terminal: {}", terminal),
         format!("launch_key: {}", config.integration.launch_key),
         format!("selected_target: {}", format_target(&target)),
-        String::new(),
-        "install_snippet:".to_string(),
-        render_install_for_target(config, &target),
     ];
+
+    if include_snippet {
+        lines.push(String::new());
+        lines.push("install_snippet:".to_string());
+        lines.push(render_install_for_target(config, &target));
+    }
 
     lines.join("\n")
 }

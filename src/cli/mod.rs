@@ -32,7 +32,7 @@ use crate::{
     version,
     about = "Terminal-first command reference browser",
     long_about = "bindfinder is a terminal-first command reference browser for SSH, tmux, and shell-heavy workflows.\n\nRun it with no subcommand to open the TUI. The TUI starts in search mode so you can type immediately. Press Esc to enter normal mode for vim-style actions, and / to return to search mode.\n\nUse subcommands to inspect config paths, validate packs, print integration snippets, and search packs from the command line.",
-    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder update\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config init\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
+    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder update\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config init\n  bindfinder config validate\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
 )]
 struct Args {
     #[command(subcommand)]
@@ -50,7 +50,7 @@ enum Command {
     /// Re-apply the detected integration and reload tmux when possible
     Reload,
     /// Detect the current environment and show the recommended integration
-    Doctor,
+    Doctor(DoctorArgs),
     /// Check for a newer release or update to it
     Update(UpdateArgs),
     /// Search packs from the command line
@@ -124,6 +124,16 @@ struct UpdateArgs {
 
 #[derive(Debug, ClapArgs)]
 #[command(
+    about = "Detect the current environment and show the recommended integration",
+    long_about = "Detect the current environment and show the recommended integration.\n\nBy default this prints a concise summary. Pass --snippet to also print the generated integration snippet."
+)]
+struct DoctorArgs {
+    #[arg(long, help = "Also print the generated integration snippet")]
+    snippet: bool,
+}
+
+#[derive(Debug, ClapArgs)]
+#[command(
     about = "Remove bindfinder integrations and installed files",
     long_about = "Remove bindfinder-managed shell/tmux blocks and installed files.\n\nBy default this removes the binary, man page, and managed integration blocks. Pass --purge-data to also remove user config, state, packs, repos, and cache files."
 )]
@@ -172,6 +182,8 @@ enum ConfigCommand {
         #[arg(long, help = "Overwrite an existing config file")]
         force: bool,
     },
+    #[command(about = "Validate the current config file and print a clear result")]
+    Validate,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -213,9 +225,18 @@ pub fn run() -> Result<()> {
                 println!("{}", path.display());
                 Ok(())
             }
+            ConfigCommand::Validate => {
+                let (_config, path) = load_config_for_command()?;
+                if let Some(path) = path {
+                    println!("valid config: {}", path.display());
+                } else {
+                    println!("valid config: defaults");
+                }
+                Ok(())
+            }
         },
         Some(Command::Install(args)) => {
-            let config = AppConfig::load()?;
+            let (config, _) = load_config_for_command()?;
             let env = EnvironmentInfo::detect();
             let target_name = match args.target {
                 InstallTarget::Auto => "auto",
@@ -342,7 +363,7 @@ pub fn run() -> Result<()> {
             Ok(())
         }
         Some(Command::Reload) => {
-            let config = AppConfig::load()?;
+            let (config, _) = load_config_for_command()?;
             let env = EnvironmentInfo::detect();
             let targets = collect_applicable_targets(&env, &config);
 
@@ -383,10 +404,10 @@ pub fn run() -> Result<()> {
             }
             Ok(())
         }
-        Some(Command::Doctor) => {
-            let config = AppConfig::load()?;
+        Some(Command::Doctor(args)) => {
+            let (config, _) = load_config_for_command()?;
             let env = EnvironmentInfo::detect();
-            println!("{}", render_doctor(&config, &env));
+            println!("{}", render_doctor(&config, &env, args.snippet));
             Ok(())
         }
         Some(Command::Update(args)) => {
@@ -679,6 +700,16 @@ fn shell_reload_hint(
         }
         crate::integration::detect::ShellKind::Unknown(_) => format!("source {}", path.display()),
     }
+}
+
+fn load_config_for_command() -> Result<(AppConfig, Option<PathBuf>)> {
+    AppConfig::load_with_path().map_err(|err| {
+        if let Some(path) = AppConfig::default_path() {
+            err.context(format!("invalid config: {}", path.display()))
+        } else {
+            err.context("invalid config")
+        }
+    })
 }
 
 fn collect_supported_uninstall_targets(

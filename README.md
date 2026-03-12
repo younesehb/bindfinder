@@ -58,6 +58,7 @@ bindfinder doctor
 bindfinder reload
 bindfinder update
 bindfinder update --check
+bindfinder config validate
 bindfinder uninstall
 bindfinder uninstall --purge-data
 bindfinder install all --write
@@ -89,8 +90,11 @@ Shell helpers:
 - Linux and macOS are supported.
 - The default experience is full-screen in the current terminal.
 - tmux and terminal-specific overlays are optional enhancements.
-- The default shell binding is `Ctrl-]`.
-- The default tmux binding is `prefix + Ctrl-]`.
+- There are two launch keys in practice:
+  - outside tmux: `Ctrl-]`
+  - inside tmux: `prefix + Ctrl-]`
+- `integration.shell.binding` is the shell key.
+- `integration.tmux.key` is the key after your tmux prefix, not a global terminal key.
 - Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
 - `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
 - The installer script downloads release artifacts from GitHub, installs into `~/.local` by default, and runs first-time setup unless `--no-setup` is used.

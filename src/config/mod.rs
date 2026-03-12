@@ -197,6 +197,12 @@ impl AppConfig {
         default_config_path()
     }
 
+    pub fn load_with_path() -> Result<(Self, Option<PathBuf>)> {
+        let path = default_config_path();
+        let config = Self::load_from_path(path.as_deref())?;
+        Ok((config, path))
+    }
+
     fn validate(&self) -> Result<()> {
         if !(20..=80).contains(&self.settings.result_list_width_percent) {
             bail!("settings.result_list_width_percent must be between 20 and 80");

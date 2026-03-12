@@ -30,7 +30,7 @@ pub fn run() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let catalog = Catalog::load_all()?;
-    let config = AppConfig::load()?;
+    let config = load_config_for_tui()?;
     let state = UserState::load().unwrap_or_default();
     let update_notice = crate::update::cached_or_fetch(env!("CARGO_PKG_VERSION"));
 
@@ -50,6 +50,18 @@ pub fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn load_config_for_tui() -> Result<AppConfig> {
+    AppConfig::load_with_path()
+        .map(|(config, _)| config)
+        .map_err(|err| {
+            if let Some(path) = AppConfig::default_path() {
+                err.context(format!("invalid config: {}", path.display()))
+            } else {
+                err.context("invalid config")
+            }
+        })
 }
 
 fn run_app(

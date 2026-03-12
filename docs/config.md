@@ -15,6 +15,12 @@ Override with:
 BINDFINDER_CONFIG=/path/to/config.yaml
 ```
 
+Validate the current config explicitly:
+
+```bash
+bindfinder config validate
+```
+
 Example:
 
 ```yaml
@@ -59,6 +65,15 @@ integration:
     enabled: false
     preferred: "auto"
 ```
+
+Launch keys:
+
+- `integration.shell.binding` is the direct shell shortcut.
+- `integration.tmux.key` is the key pressed after your tmux prefix.
+- With the current defaults that means:
+  - outside tmux: `Ctrl-]`
+  - inside tmux: `prefix + Ctrl-]`
+- `integration.launch_key` is only the shared preferred key name used for setup and docs. It is not a single global terminal binding.
 
 TUI behavior:
 
