@@ -28,8 +28,11 @@ cargo install bindfinder
 Tagged releases ship prebuilt tarballs for:
 
 - Linux `x86_64-unknown-linux-gnu`
-- macOS `x86_64-apple-darwin`
 - macOS `aarch64-apple-darwin`
+
+Intel macOS is still supported through source installs with Cargo or Homebrew,
+but the current GitHub release automation does not build a separate Intel macOS
+artifact.
 
 Install by unpacking the archive and placing `bindfinder` somewhere on `PATH`,
 for example:

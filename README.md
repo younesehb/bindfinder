@@ -57,5 +57,6 @@ bindfinder navi import denisidoro/cheats
 ## Notes
 
 - Linux and macOS are supported.
+- Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
 - `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
 - The repository ships a Homebrew formula in [Formula/bindfinder.rb](./Formula/bindfinder.rb).

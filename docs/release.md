@@ -9,8 +9,11 @@ Current version: `0.1.0`
 The project now ships release automation for:
 
 - `x86_64-unknown-linux-gnu`
-- `x86_64-apple-darwin`
 - `aarch64-apple-darwin`
+
+Intel macOS remains installable from source, but is not currently included in
+the automated release matrix because the `macos-13` runner is not available for
+this repository.
 
 The workflow is in [.github/workflows/release.yml](../.github/workflows/release.yml)
 and runs on version tags such as `v0.1.0`.
