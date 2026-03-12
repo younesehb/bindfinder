@@ -18,6 +18,7 @@ curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/inst
 
 That installs the binary, installs the man page, writes the default config, and
 sets up the shell integration automatically when it can detect your environment.
+It also imports `denisidoro/cheats` by default when `git` is available.
 
 From source:
 

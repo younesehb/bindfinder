@@ -145,6 +145,14 @@ shell_reload_command() {
   esac
 }
 
+tmux_reload_command() {
+  if [ -n "${TMUX:-}" ]; then
+    printf '%s\n' 'tmux source-file ~/.tmux.conf'
+  else
+    printf '%s\n' ''
+  fi
+}
+
 default_shortcut_hint() {
   targets="$1"
   case " $targets " in
@@ -166,6 +174,10 @@ run_setup() {
   else
     echo "bindfinder installer: skipping integration setup because the shell could not be detected safely." >&2
     echo "Run 'bindfinder install auto --write' after adding $BIN_DIR to PATH." >&2
+  fi
+
+  if command -v git >/dev/null 2>&1; then
+    "$BIN_DIR/bindfinder" navi import denisidoro/cheats >/dev/null 2>&1 || true
   fi
 }
 
@@ -240,9 +252,13 @@ echo "More info: bindfinder --help"
 echo "Docs: https://github.com/$REPO/tree/main/docs"
 if [ "$SETUP" -eq 1 ]; then
   reload_cmd="$(shell_reload_command)"
+  tmux_cmd="$(tmux_reload_command)"
+  if [ -n "$tmux_cmd" ]; then
+    echo "Reload tmux now: $tmux_cmd"
+  fi
   if [ -n "$reload_cmd" ]; then
-    echo "If the current shell session does not pick up the integration yet, run: $reload_cmd"
+    echo "Reload your shell now: $reload_cmd"
   else
-    echo "If the current shell session does not pick up the integration yet, reload it once."
+    echo "Reload your current shell session now."
   fi
 fi

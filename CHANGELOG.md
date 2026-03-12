@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.8 - 2026-03-13
+
+- make the installer import `denisidoro/cheats` by default when `git` is available
+- document that the default install comes with navi cheat content
+
 ## 0.1.7 - 2026-03-13
 
 - make the installer print the default shortcut for the detected shell or tmux setup

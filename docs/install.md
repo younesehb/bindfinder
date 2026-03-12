@@ -29,6 +29,7 @@ The installer:
 - writes the default config with `bindfinder config init`
 - installs tmux, bash, zsh, or fish integration automatically when the current environment can be detected safely
 - when both tmux and a supported shell are present, installs both integrations
+- imports `denisidoro/cheats` by default when `git` is available
 
 Useful overrides:
 
