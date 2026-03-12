@@ -1,0 +1,35 @@
+settings:
+  result_list_width_percent: 45
+  show_footer: true
+  wrap_preview: true
+
+keybindings:
+  quit:
+    - "q"
+    - "esc"
+    - "ctrl-c"
+  clear_query:
+    - "ctrl-u"
+  move_up:
+    - "up"
+    - "k"
+  move_down:
+    - "down"
+    - "j"
+
+integration:
+  mode: "auto"
+  launch_key: "ctrl-/"
+  tmux:
+    enabled: true
+    key: "/"
+    use_popup: true
+    popup_width: "80%"
+    popup_height: "80%"
+  shell:
+    enabled: true
+    preferred: "auto"
+    binding: "ctrl-/"
+  terminal:
+    enabled: false
+    preferred: "auto"

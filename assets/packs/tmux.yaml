@@ -1,0 +1,51 @@
+pack:
+  id: "tmux-core"
+  tool: "tmux"
+  title: "tmux Core Bindings"
+  version: "0.1.0"
+  source: "built-in"
+
+entries:
+  - id: "split-horizontal"
+    type: "binding"
+    title: "Split Pane Horizontally"
+    keys: 'Prefix + "'
+    command: "split-window"
+    description: "Split the current pane into top and bottom panes."
+    examples:
+      - 'Default prefix is Ctrl-b, then "'
+    tags: ["panes", "layout"]
+    aliases: ["split pane horizontal", "new pane below"]
+
+  - id: "split-vertical"
+    type: "binding"
+    title: "Split Pane Vertically"
+    keys: "Prefix + %"
+    command: "split-window -h"
+    description: "Split the current pane into left and right panes."
+    examples:
+      - "Use this for side-by-side work."
+    tags: ["panes", "layout"]
+    aliases: ["split pane vertical", "new pane right"]
+
+  - id: "new-window"
+    type: "binding"
+    title: "Create New Window"
+    keys: "Prefix + c"
+    command: "new-window"
+    description: "Create a new tmux window in the current session."
+    examples:
+      - "Useful for starting a fresh task context."
+    tags: ["windows", "session"]
+    aliases: ["create window", "new tab"]
+
+  - id: "copy-mode"
+    type: "binding"
+    title: "Enter Copy Mode"
+    keys: "Prefix + ["
+    command: "copy-mode"
+    description: "Enter scrollback and text selection mode."
+    examples:
+      - "In vi copy mode, use / to search and Space to start selection."
+    tags: ["copy", "scrollback"]
+    aliases: ["scroll mode", "history mode"]
