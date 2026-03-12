@@ -170,13 +170,7 @@ url="https://github.com/$REPO/releases/download/v${version}/${archive}"
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT INT TERM
 
-echo "bindfinder installer"
-echo "  repo:    $REPO"
-echo "  version: $version"
-echo "  target:  $target"
-echo "  url:     $url"
-
-curl -fL "$url" -o "$tmpdir/$archive"
+curl -fsSL "$url" -o "$tmpdir/$archive"
 tar -xzf "$tmpdir/$archive" -C "$tmpdir"
 
 archive_dir="$tmpdir/bindfinder-${version}-${target}"
@@ -201,26 +195,26 @@ if ! "$BIN_DIR/bindfinder" --version >/dev/null 2>&1; then
 fi
 
 if [ "$SETUP" -eq 1 ]; then
-  echo "Running first-time setup..."
   setup_target="$(detect_setup_target)"
   run_setup "$setup_target"
 fi
 
 echo
-echo "Installed:"
-echo "  binary: $BIN_DIR/bindfinder"
-echo "  man:    $MAN_DIR/bindfinder.1"
-echo
-echo "Next steps:"
+echo "bindfinder installed"
 if path_contains_dir "$BIN_DIR"; then
-  echo "  1. $BIN_DIR is already on your PATH"
+  :
 else
-  echo "  1. Ensure $BIN_DIR is on your PATH"
+  echo "Add $BIN_DIR to your PATH, then run bindfinder."
+  exit 0
 fi
 if [ "$SETUP" -eq 1 ]; then
-  echo "  2. Reload your shell or tmux config once"
-  echo "  3. Run: bindfinder"
+  echo "Run bindfinder or use your installed shortcut."
 else
-  echo "  2. Run: bindfinder config init"
-  echo "  3. Run: bindfinder install auto --write"
+  echo "Run bindfinder config init"
+  echo "Run bindfinder install auto --write"
+fi
+echo "More info: bindfinder --help"
+echo "Docs: https://github.com/$REPO/tree/main/docs"
+if [ "$SETUP" -eq 1 ]; then
+  echo "If the current shell session does not pick up the integration yet, reload it once."
 fi

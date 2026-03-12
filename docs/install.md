@@ -33,13 +33,14 @@ The installer:
 Useful overrides:
 
 ```bash
-BINDFINDER_VERSION=0.1.5 curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
+BINDFINDER_VERSION=0.1.6 curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
 BINDFINDER_INSTALL_ROOT="$HOME/.local" curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh
 curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/install.sh | sh -s -- --no-setup
 ```
 
 If your shell does not already include `~/.local/bin` on `PATH`, add it first.
-After setup, reload your shell or tmux config once.
+After setup, `bindfinder` is ready to use.
+If the current shell session does not pick up the integration immediately, reload that shell once.
 If the installer cannot determine the right shell integration target, it leaves
 the binary installed and prints the follow-up command to run manually.
 

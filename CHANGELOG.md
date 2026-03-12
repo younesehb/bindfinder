@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.6 - 2026-03-13
+
+- simplify installer output so it shows only the result and the way to start using `bindfinder`
+- point users to `bindfinder --help` and the GitHub docs URL after install
+
 ## 0.1.5 - 2026-03-13
 
 - publish `install.sh` as a release asset

@@ -19,12 +19,6 @@ curl -fsSL https://github.com/younesehb/bindfinder/releases/latest/download/inst
 That installs the binary, installs the man page, writes the default config, and
 sets up the shell integration automatically when it can detect your environment.
 
-Then reload your shell once:
-
-```bash
-source ~/.bashrc
-```
-
 From source:
 
 ```bash
@@ -54,6 +48,7 @@ Normal usage:
 - `Esc` switches to normal mode
 - `/` returns to search mode
 - placeholder commands open a small argument form before insertion
+- use your installed shortcut or just run `bindfinder`
 
 Useful commands:
 
@@ -95,5 +90,6 @@ Shell helpers:
 - Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
 - `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
 - The installer script downloads release artifacts from GitHub, installs into `~/.local` by default, and runs first-time setup unless `--no-setup` is used.
+- If the current shell session does not pick up the integration immediately after install, reload that shell once.
 - To remove bindfinder again, use `bindfinder uninstall`. Add `--purge-data` to also remove config, state, packs, repos, and cache files.
 - The repository ships a Homebrew formula in [Formula/bindfinder.rb](./Formula/bindfinder.rb).

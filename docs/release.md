@@ -2,7 +2,7 @@
 
 ## Version
 
-Current version: `0.1.5`
+Current version: `0.1.6`
 
 ## Targets
 
@@ -48,10 +48,10 @@ cargo build --release
 Package a Linux release tarball locally:
 
 ```bash
-mkdir -p dist/bindfinder-0.1.5-x86_64-unknown-linux-musl
-cp target/release/bindfinder dist/bindfinder-0.1.5-x86_64-unknown-linux-musl/
-cp README.md LICENSE CHANGELOG.md install.sh dist/bindfinder-0.1.5-x86_64-unknown-linux-musl/
-tar -C dist -czf dist/bindfinder-0.1.5-x86_64-unknown-linux-musl.tar.gz bindfinder-0.1.5-x86_64-unknown-linux-musl
+mkdir -p dist/bindfinder-0.1.6-x86_64-unknown-linux-musl
+cp target/release/bindfinder dist/bindfinder-0.1.6-x86_64-unknown-linux-musl/
+cp README.md LICENSE CHANGELOG.md install.sh dist/bindfinder-0.1.6-x86_64-unknown-linux-musl/
+tar -C dist -czf dist/bindfinder-0.1.6-x86_64-unknown-linux-musl.tar.gz bindfinder-0.1.6-x86_64-unknown-linux-musl
 ```
 
 ## Publish Gap
