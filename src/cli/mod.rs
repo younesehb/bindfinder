@@ -32,7 +32,7 @@ use crate::{
     version,
     about = "Terminal-first command reference browser",
     long_about = "bindfinder is a terminal-first command reference browser for SSH, tmux, and shell-heavy workflows.\n\nRun it with no subcommand to open the TUI. The TUI starts in search mode so you can type immediately. Press Esc to enter normal mode for vim-style actions, and / to return to search mode.\n\nUse subcommands to inspect config paths, validate packs, print integration snippets, and search packs from the command line.",
-    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder update\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config init\n  bindfinder config validate\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
+    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder update\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config\n  bindfinder config init\n  bindfinder config validate\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
 )]
 struct Args {
     #[command(subcommand)]
@@ -78,7 +78,7 @@ enum Command {
 #[derive(Debug, ClapArgs)]
 struct ConfigArgs {
     #[command(subcommand)]
-    command: ConfigCommand,
+    command: Option<ConfigCommand>,
 }
 
 #[derive(Debug, ClapArgs)]
@@ -210,7 +210,8 @@ pub fn run() -> Result<()> {
     match args.command {
         None => tui::run(),
         Some(Command::Config(args)) => match args.command {
-            ConfigCommand::Init { force } => {
+            None => open_config_in_editor(),
+            Some(ConfigCommand::Init { force }) => {
                 let config = AppConfig::default();
                 let path =
                     AppConfig::default_path().context("no config path could be determined")?;
@@ -225,7 +226,7 @@ pub fn run() -> Result<()> {
                 println!("{}", path.display());
                 Ok(())
             }
-            ConfigCommand::Validate => {
+            Some(ConfigCommand::Validate) => {
                 let (_config, path) = load_config_for_command()?;
                 if let Some(path) = path {
                     println!("valid config: {}", path.display());
@@ -630,6 +631,87 @@ pub fn run() -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn open_config_in_editor() -> Result<()> {
+    let config = AppConfig::default();
+    let path = AppConfig::default_path().context("no config path could be determined")?;
+
+    if !path.exists() {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&path, config.to_yaml_string()?)?;
+    }
+
+    let editor = preferred_editor()
+        .context("no editor found; set VISUAL or EDITOR, or install one of: nvim, vim, nano, vi")?;
+
+    let status = ProcessCommand::new(&editor.program)
+        .args(&editor.args)
+        .arg(&path)
+        .status()
+        .with_context(|| format!("failed to start editor '{}'", editor.program))?;
+
+    if !status.success() {
+        anyhow::bail!(
+            "editor '{}' exited with status {}",
+            editor.program,
+            status
+                .code()
+                .map(|code| code.to_string())
+                .unwrap_or_else(|| "unknown".to_string())
+        );
+    }
+
+    Ok(())
+}
+
+struct EditorCommand {
+    program: String,
+    args: Vec<String>,
+}
+
+fn preferred_editor() -> Option<EditorCommand> {
+    if let Some(editor) = env::var("VISUAL")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+    {
+        return Some(parse_editor_command(&editor));
+    }
+    if let Some(editor) = env::var("EDITOR")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+    {
+        return Some(parse_editor_command(&editor));
+    }
+
+    for candidate in ["nvim", "vim", "nano", "vi"] {
+        if command_exists(candidate) {
+            return Some(EditorCommand {
+                program: candidate.to_string(),
+                args: Vec::new(),
+            });
+        }
+    }
+
+    None
+}
+
+fn parse_editor_command(command: &str) -> EditorCommand {
+    let mut parts = command.split_whitespace();
+    let program = parts.next().unwrap_or(command).to_string();
+    let args = parts.map(ToString::to_string).collect();
+    EditorCommand { program, args }
+}
+
+fn command_exists(program: &str) -> bool {
+    ProcessCommand::new("sh")
+        .arg("-lc")
+        .arg(format!("command -v {} >/dev/null 2>&1", program))
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
 }
 
 fn log_tmux_capture(message: &str) -> Result<()> {

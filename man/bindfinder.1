@@ -1,4 +1,4 @@
-.TH BINDFINDER 1 "March 2026" "bindfinder 0.1.15" "User Commands"
+.TH BINDFINDER 1 "March 2026" "bindfinder 0.1.16" "User Commands"
 .SH NAME
 bindfinder \- terminal-first command reference browser
 .SH SYNOPSIS
@@ -12,6 +12,9 @@ Run it with no subcommand to open the TUI.
 The TUI starts in search mode so you can type immediately.
 Press Esc to enter normal mode for vim-style actions, and / to return to search mode.
 .SH COMMANDS
+.TP
+.B config
+Open the runtime config in the preferred editor.
 .TP
 .B config init
 Write the default YAML config to the standard config path.
@@ -73,6 +76,7 @@ tmux debug log when tmux debug is enabled.
 .SH EXAMPLES
 .nf
 bindfinder
+bindfinder config
 bindfinder doctor
 bindfinder install auto --write
 bindfinder install man --write

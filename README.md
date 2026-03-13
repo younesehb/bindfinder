@@ -29,7 +29,7 @@ cargo install --path .
 Then initialize config and install the recommended integration:
 
 ```bash
-bindfinder config init
+bindfinder config
 bindfinder install auto --write
 ```
 
@@ -58,6 +58,7 @@ bindfinder doctor
 bindfinder reload
 bindfinder update
 bindfinder update --check
+bindfinder config
 bindfinder config validate
 bindfinder uninstall
 bindfinder uninstall --purge-data

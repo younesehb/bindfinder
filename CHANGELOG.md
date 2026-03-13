@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.16 - 2026-03-13
+
+- make `bindfinder config` open the config file in the preferred editor
+- keep `bindfinder config init` and `bindfinder config validate` as explicit config subcommands
+
 ## 0.1.15 - 2026-03-13
 
 - show the effective launch hotkey in `bindfinder doctor`

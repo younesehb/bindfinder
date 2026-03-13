@@ -2,6 +2,12 @@
 
 `bindfinder` reads runtime configuration from YAML.
 
+Open the config in your preferred editor with:
+
+```bash
+bindfinder config
+```
+
 Default config path:
 
 ```bash
