@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bindfinder Key Packs"
+  short_description: "Create bindfinder key packs"
+  default_prompt: "Use $bindfinder-key-packs to create or update a bindfinder YAML pack for a tool like Vim."

@@ -106,6 +106,16 @@ Useful commands:
 - `bindfinder uninstall`: remove the binary and managed integration blocks
 - `bindfinder uninstall --purge-data`: also remove config, state, packs, repos, and cache files
 
+Codex skill:
+
+- `bindfinder-key-packs`: create bindfinder entries from real tool configs like Vim or tmux. See [docs/skills.md](./docs/skills.md).
+
+Install the skill into your coding agent:
+
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/younesehb/bindfinder/main/.codex/INSTALL.md
+```
+
 Shell helpers:
 
 - typing `bindfinder` with no arguments in an interactive shell now uses the shell-integrated picker path
@@ -136,6 +146,7 @@ Shell helpers:
 - [tmux integration](./docs/tmux.md)
 - [navi support](./docs/navi.md)
 - [Pack format](./docs/packs.md)
+- [Codex skill usage](./docs/skills.md)
 - [Release process](./docs/release.md)
 - [Contributing](./CONTRIBUTING.md)
 
