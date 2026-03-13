@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.20 - 2026-03-13
+
+- make `bindfinder config` validate and reload integrations automatically after the editor exits
+
 ## 0.1.19 - 2026-03-13
 
 - remove `integration.launch_key` from the config

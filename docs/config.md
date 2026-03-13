@@ -8,6 +8,9 @@ Open the config in your preferred editor with:
 bindfinder config
 ```
 
+When the editor exits, bindfinder validates the config and runs the same reload
+path as `bindfinder reload`.
+
 Default config path:
 
 ```bash

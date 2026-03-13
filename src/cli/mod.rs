@@ -363,48 +363,7 @@ pub fn run() -> Result<()> {
 
             Ok(())
         }
-        Some(Command::Reload) => {
-            let (config, _) = load_config_for_command()?;
-            let env = EnvironmentInfo::detect();
-            let targets = collect_applicable_targets(&env, &config);
-
-            if targets.is_empty() {
-                println!("no reload action for the current environment");
-                println!("run: bindfinder install auto --write");
-                return Ok(());
-            }
-
-            for target in targets {
-                let snippet = render_install_for_target(&config, &target);
-                let path = default_install_path(&target)
-                    .context("no default install path for this target")?;
-                write_install_block(&path, &snippet)?;
-
-                match &target {
-                    crate::integration::detect::IntegrationTarget::Tmux => {
-                        let status = ProcessCommand::new("tmux")
-                            .arg("source-file")
-                            .arg(&path)
-                            .status();
-                        match status {
-                            Ok(status) if status.success() => {
-                                println!("reloaded tmux config: {}", path.display());
-                            }
-                            Ok(_) | Err(_) => {
-                                println!("updated tmux config: {}", path.display());
-                                println!("run: tmux source-file {}", path.display());
-                            }
-                        }
-                    }
-                    crate::integration::detect::IntegrationTarget::Shell(shell) => {
-                        println!("updated shell config: {}", path.display());
-                        println!("reload command: {}", shell_reload_hint(shell, &path));
-                    }
-                    _ => {}
-                }
-            }
-            Ok(())
-        }
+        Some(Command::Reload) => perform_reload(),
         Some(Command::Doctor(args)) => {
             let (config, _) = load_config_for_command()?;
             let env = EnvironmentInfo::detect();
@@ -670,6 +629,58 @@ fn open_config_in_editor() -> Result<()> {
                 .map(|code| code.to_string())
                 .unwrap_or_else(|| "unknown".to_string())
         );
+    }
+
+    let (_config, path) = load_config_for_command()?;
+    if let Some(path) = path {
+        println!("validated config: {}", path.display());
+    } else {
+        println!("validated config: defaults");
+    }
+    perform_reload()?;
+
+    Ok(())
+}
+
+fn perform_reload() -> Result<()> {
+    let (config, _) = load_config_for_command()?;
+    let env = EnvironmentInfo::detect();
+    let targets = collect_applicable_targets(&env, &config);
+
+    if targets.is_empty() {
+        println!("no reload action for the current environment");
+        println!("run: bindfinder install auto --write");
+        return Ok(());
+    }
+
+    for target in targets {
+        let snippet = render_install_for_target(&config, &target);
+        let path =
+            default_install_path(&target).context("no default install path for this target")?;
+        write_install_block(&path, &snippet)?;
+
+        match &target {
+            crate::integration::detect::IntegrationTarget::Tmux => {
+                let status = ProcessCommand::new("tmux")
+                    .arg("source-file")
+                    .arg(&path)
+                    .status();
+                match status {
+                    Ok(status) if status.success() => {
+                        println!("reloaded tmux config: {}", path.display());
+                    }
+                    Ok(_) | Err(_) => {
+                        println!("updated tmux config: {}", path.display());
+                        println!("run: tmux source-file {}", path.display());
+                    }
+                }
+            }
+            crate::integration::detect::IntegrationTarget::Shell(shell) => {
+                println!("updated shell config: {}", path.display());
+                println!("reload command: {}", shell_reload_hint(shell, &path));
+            }
+            _ => {}
+        }
     }
 
     Ok(())

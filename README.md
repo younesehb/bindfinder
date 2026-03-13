@@ -33,6 +33,9 @@ bindfinder config
 bindfinder install auto --write
 ```
 
+`bindfinder config` validates and reapplies the current integration automatically
+when you exit the editor.
+
 ## Use
 
 ```bash
