@@ -39,17 +39,10 @@ That installs the binary, installs the man page, writes the default config, and
 sets up the shell integration automatically when it can detect your environment.
 It also imports `denisidoro/cheats` by default when `git` is available.
 
-From source:
-
-```bash
-cargo install --path .
-```
-
-Then initialize config and install the recommended integration:
+Then:
 
 ```bash
 bindfinder config
-bindfinder install auto --write
 ```
 
 `bindfinder config` validates and reapplies the current integration automatically
@@ -57,8 +50,21 @@ when you exit the editor.
 
 ## Quickstart
 
+Default opener:
+
+- outside tmux: `Ctrl-]`
+- inside tmux: `prefix + Ctrl-]`
+
+Open the picker:
+
 ```bash
 bindfinder
+```
+
+Search directly from the CLI:
+
+```bash
+bindfinder search tmux split
 ```
 
 Type immediately to filter. Press `Enter` to insert the selected command.
@@ -130,3 +136,9 @@ Shell helpers:
 - If the current shell session does not pick up the integration immediately after install, reload that shell once.
 - To remove bindfinder again, use `bindfinder uninstall`. Add `--purge-data` to also remove config, state, packs, repos, and cache files.
 - The repository ships a Homebrew formula in [Formula/bindfinder.rb](./Formula/bindfinder.rb).
+
+## Source Install
+
+```bash
+cargo install --path .
+```
