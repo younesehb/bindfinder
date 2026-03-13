@@ -27,12 +27,10 @@ In the current implementation, the installed tmux binding calls the internal
 
 ## Default Binding
 
-The tmux config stores only the key after your prefix.
-
 The default tmux key is:
 
 ```tmux
-prefix + C-]
+prefix + Ctrl-]
 ```
 
 If your tmux prefix is `C-a`, that means:
@@ -48,6 +46,16 @@ When `integration.tmux.use_popup: false`, the generated binding looks like:
 ```tmux
 bind-key C-] run-shell "/home/USER/.local/bin/bindfinder tmux-launch"
 ```
+
+In the YAML config, set:
+
+```yaml
+integration:
+  tmux:
+    key: "ctrl-]"
+```
+
+bindfinder converts that to tmux's `C-]` syntax internally.
 
 The `tmux-launch` subcommand opens a vertical split sized for the TUI and then
 reinjects the selected command into the original pane.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.19 - 2026-03-13
+
+- remove `integration.launch_key` from the config
+- use the same `ctrl-...]` syntax in YAML for both shell and tmux bindings
+- translate tmux keys to tmux syntax internally when generating tmux bindings
+
 ## 0.1.18 - 2026-03-13
 
 - make `bindfinder config` force-open the config by removing an existing Vim swap file first

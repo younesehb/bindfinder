@@ -76,8 +76,6 @@ pub struct KeyBindingsFile {
 pub struct IntegrationConfigFile {
     #[serde(default)]
     pub mode: IntegrationMode,
-    #[serde(default = "default_launch_key")]
-    pub launch_key: String,
     #[serde(default)]
     pub tmux: TmuxConfig,
     #[serde(default)]
@@ -120,7 +118,6 @@ pub struct KeySequence {
 #[derive(Debug, Clone)]
 pub struct IntegrationConfig {
     pub mode: IntegrationMode,
-    pub launch_key: String,
     pub tmux: TmuxConfig,
     pub shell: ShellConfig,
     pub terminal: TerminalConfig,
@@ -158,7 +155,7 @@ pub struct ShellConfig {
     pub enabled: bool,
     #[serde(default = "default_shell_preferred")]
     pub preferred: String,
-    #[serde(default = "default_launch_key")]
+    #[serde(default = "default_shell_binding")]
     pub binding: String,
 }
 
@@ -210,9 +207,6 @@ impl AppConfig {
         if self.keybindings.quit.is_empty() {
             bail!("keybindings.quit must not be empty");
         }
-        if self.integration.launch_key.trim().is_empty() {
-            bail!("integration.launch_key must not be empty");
-        }
         if self.integration.tmux.key.trim().is_empty() {
             bail!("integration.tmux.key must not be empty");
         }
@@ -225,8 +219,8 @@ impl AppConfig {
         if self.integration.shell.binding.trim().is_empty() {
             bail!("integration.shell.binding must not be empty");
         }
-        validate_shell_binding_syntax(&self.integration.shell.binding)?;
-        validate_tmux_key_syntax(&self.integration.tmux.key)?;
+        validate_shell_binding(&self.integration.shell.binding)?;
+        validate_tmux_key(&self.integration.tmux.key)?;
         Ok(())
     }
 
@@ -274,7 +268,6 @@ impl Default for IntegrationConfig {
     fn default() -> Self {
         Self {
             mode: IntegrationMode::Auto,
-            launch_key: default_launch_key(),
             tmux: TmuxConfig::default(),
             shell: ShellConfig::default(),
             terminal: TerminalConfig::default(),
@@ -300,7 +293,7 @@ impl Default for ShellConfig {
         Self {
             enabled: default_true(),
             preferred: default_shell_preferred(),
-            binding: default_launch_key(),
+            binding: default_shell_binding(),
         }
     }
 }
@@ -416,7 +409,6 @@ impl From<IntegrationConfigFile> for IntegrationConfig {
     fn from(value: IntegrationConfigFile) -> Self {
         Self {
             mode: value.mode,
-            launch_key: value.launch_key,
             tmux: value.tmux,
             shell: value.shell,
             terminal: value.terminal,
@@ -465,7 +457,6 @@ impl From<&IntegrationConfig> for IntegrationConfigFile {
     fn from(value: &IntegrationConfig) -> Self {
         Self {
             mode: value.mode.clone(),
-            launch_key: value.launch_key.clone(),
             tmux: value.tmux.clone(),
             shell: value.shell.clone(),
             terminal: value.terminal.clone(),
@@ -710,12 +701,12 @@ fn default_true() -> bool {
     true
 }
 
-fn default_launch_key() -> String {
+fn default_shell_binding() -> String {
     "ctrl-]".to_string()
 }
 
 fn default_tmux_key() -> String {
-    "C-]".to_string()
+    "ctrl-]".to_string()
 }
 
 fn default_popup_width() -> String {
@@ -734,35 +725,16 @@ fn default_terminal_preferred() -> String {
     "auto".to_string()
 }
 
-fn validate_shell_binding_syntax(value: &str) -> Result<()> {
-    let normalized = value.trim().to_ascii_lowercase();
-    if normalized.is_empty() {
-        return Ok(());
-    }
-
-    if normalized.starts_with("c-") {
-        bail!(
-            "integration.shell.binding uses shell syntax like ctrl-] or alt-/, not tmux syntax like C-]"
-        );
-    }
-
-    Ok(())
+fn validate_shell_binding(value: &str) -> Result<()> {
+    parse_sequence(value)
+        .map(|_| ())
+        .with_context(|| format!("invalid integration.shell.binding: {value}"))
 }
 
-fn validate_tmux_key_syntax(value: &str) -> Result<()> {
-    let normalized = value.trim().to_ascii_lowercase();
-    if normalized.is_empty() {
-        return Ok(());
-    }
-
-    if normalized.starts_with("ctrl-")
-        || normalized.starts_with("alt-")
-        || normalized.starts_with("shift-")
-    {
-        bail!("integration.tmux.key uses tmux syntax like C-] or /, not shell syntax like ctrl-]");
-    }
-
-    Ok(())
+fn validate_tmux_key(value: &str) -> Result<()> {
+    parse_binding(value)
+        .map(|_| ())
+        .with_context(|| format!("invalid integration.tmux.key: {value}"))
 }
 
 #[cfg(test)]
@@ -799,7 +771,6 @@ keybindings:
   hide_entry: ["o"]
 integration:
   mode: "tmux"
-  launch_key: "ctrl-]"
   tmux:
     key: "?"
     use_popup: false
@@ -819,7 +790,6 @@ integration:
         assert!(!config.settings.show_footer);
         assert!(!config.settings.wrap_preview);
         assert_eq!(config.integration.mode, IntegrationMode::Tmux);
-        assert_eq!(config.integration.launch_key, "ctrl-]");
         assert_eq!(config.integration.tmux.key, "?");
         assert!(!config.integration.tmux.use_popup);
         assert!(config.integration.tmux.debug);
@@ -840,7 +810,8 @@ integration:
             .to_yaml_string()
             .expect("default config should serialize");
         assert!(yaml.contains("integration:"));
-        assert!(yaml.contains("launch_key: ctrl-]"));
+        assert!(yaml.contains("binding: ctrl-]"));
+        assert!(yaml.contains("key: ctrl-]"));
     }
 
     #[test]
@@ -871,11 +842,11 @@ integration:
     }
 
     #[test]
-    fn shell_binding_rejects_tmux_style_key_notation() {
+    fn shell_binding_accepts_ctrl_style_key_notation() {
         let yaml = r#"
 integration:
   shell:
-    binding: "C-]"
+    binding: "ctrl-]"
 "#;
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -884,16 +855,14 @@ integration:
         let path = env::temp_dir().join(format!("bindfinder-config-{stamp}.yaml"));
         fs::write(&path, yaml).expect("write config");
 
-        let err = AppConfig::load_from_path(Some(&path)).expect_err("config should fail");
+        let config = AppConfig::load_from_path(Some(&path)).expect("config should parse");
         fs::remove_file(&path).ok();
 
-        assert!(err
-            .to_string()
-            .contains("integration.shell.binding uses shell syntax like ctrl-]"));
+        assert_eq!(config.integration.shell.binding, "ctrl-]");
     }
 
     #[test]
-    fn tmux_key_rejects_shell_style_key_notation() {
+    fn tmux_key_accepts_ctrl_style_key_notation() {
         let yaml = r#"
 integration:
   tmux:
@@ -906,11 +875,9 @@ integration:
         let path = env::temp_dir().join(format!("bindfinder-config-{stamp}.yaml"));
         fs::write(&path, yaml).expect("write config");
 
-        let err = AppConfig::load_from_path(Some(&path)).expect_err("config should fail");
+        let config = AppConfig::load_from_path(Some(&path)).expect("config should parse");
         fs::remove_file(&path).ok();
 
-        assert!(err
-            .to_string()
-            .contains("integration.tmux.key uses tmux syntax like C-]"));
+        assert_eq!(config.integration.tmux.key, "ctrl-]");
     }
 }

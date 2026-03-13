@@ -45,10 +45,9 @@ keybindings:
 
 integration:
   mode: "auto"
-  launch_key: "ctrl-]"
   tmux:
     enabled: true
-    key: "C-]"
+    key: "ctrl-]"
     use_popup: false
     popup_width: "80%"
     popup_height: "80%"

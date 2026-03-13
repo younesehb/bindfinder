@@ -55,10 +55,9 @@ keybindings:
 
 integration:
   mode: "auto"
-  launch_key: "ctrl-]"
   tmux:
     enabled: true
-    key: "C-]"
+    key: "ctrl-]"
     use_popup: false
     popup_width: "80%"
     popup_height: "80%"
@@ -79,7 +78,8 @@ Launch keys:
 - With the current defaults that means:
   - outside tmux: `Ctrl-]`
   - inside tmux: `prefix + Ctrl-]`
-- `integration.launch_key` is only the shared preferred key name used for setup and docs. It is not a single global terminal binding.
+- use the same `ctrl-...]` style in YAML for both shell and tmux
+- bindfinder converts the tmux key to tmux syntax internally when it writes the tmux binding
 
 TUI behavior:
 

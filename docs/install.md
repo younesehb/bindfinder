@@ -81,7 +81,8 @@ With the shell integration loaded:
 - `bf` is a short alias for the shell-integrated picker path
 - the default shell binding is `Ctrl-]`
 - the default tmux binding is `prefix + Ctrl-]`
-- tmux stores only the key after the prefix, so `integration.tmux.key: C-]` means `prefix + Ctrl-]`
+- in the YAML config, set `integration.tmux.key: ctrl-]`
+- bindfinder converts that to tmux's `C-]` syntax internally
 
 ## Uninstall
 

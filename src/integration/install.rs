@@ -51,7 +51,6 @@ pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo, include_snippet:
         format!("over_ssh: {}", env.over_ssh),
         format!("shell: {}", shell),
         format!("terminal: {}", terminal),
-        format!("launch_key: {}", config.integration.launch_key),
         format!("selected_target: {}", format_target(&target)),
         format!("effective_hotkey: {}", effective_hotkey(config, &target)),
     ];
@@ -69,7 +68,7 @@ pub fn effective_hotkey(config: &AppConfig, target: &IntegrationTarget) -> Strin
     match target {
         IntegrationTarget::Tmux => format!("prefix + {}", config.integration.tmux.key),
         IntegrationTarget::Shell(_) => config.integration.shell.binding.clone(),
-        IntegrationTarget::Terminal(_) => config.integration.launch_key.clone(),
+        IntegrationTarget::Terminal(_) => config.integration.shell.binding.clone(),
         IntegrationTarget::Plain => "bindfinder".to_string(),
     }
 }
@@ -78,7 +77,8 @@ fn render_tmux(config: &AppConfig) -> String {
     let bindfinder = tmux_bindfinder_path();
     format!(
         "bind-key {} run-shell \"{} tmux-launch\"",
-        config.integration.tmux.key, bindfinder
+        tmux_binding(&config.integration.tmux.key),
+        bindfinder
     )
 }
 
@@ -95,11 +95,11 @@ fn render_shell(config: &AppConfig, shell: &ShellKind) -> String {
 }
 
 fn render_terminal(config: &AppConfig, terminal: &TerminalKind) -> String {
-    let Some(key) = terminal_binding_key(&config.integration.launch_key) else {
+    let Some(key) = terminal_binding_key(&config.integration.shell.binding) else {
         return format!(
             "# terminal launch key '{}' is not representable as a single terminal shortcut\n# requested launch key: {}",
-            config.integration.launch_key,
-            config.integration.launch_key
+            config.integration.shell.binding,
+            config.integration.shell.binding
         );
     };
 
@@ -107,22 +107,47 @@ fn render_terminal(config: &AppConfig, terminal: &TerminalKind) -> String {
         TerminalKind::WezTerm => format!(
             "keys = {{ {{ key = '{}', mods = 'CTRL', action = wezterm.action.SpawnCommandInNewTab {{ args = {{ 'bindfinder' }} }} }} }} -- requested launch key: {}",
             key,
-            config.integration.launch_key
+            config.integration.shell.binding
         ),
         TerminalKind::Kitty => format!(
             "map ctrl+{} launch --type=overlay bindfinder\n# requested launch key: {}",
-            key,
-            config.integration.launch_key
+            key, config.integration.shell.binding
         ),
         TerminalKind::Iterm2 => format!(
             "# configure iTerm2 to send command: bindfinder\n# requested launch key: {}",
-            config.integration.launch_key
+            config.integration.shell.binding
         ),
         TerminalKind::Unknown(name) => format!(
             "# terminal '{}' is not directly supported yet\nbindfinder",
             name
         ),
     }
+}
+
+fn tmux_binding(binding: &str) -> String {
+    let mut parts = Vec::new();
+    for step in binding.split_whitespace() {
+        let normalized = step.trim().to_ascii_lowercase();
+        if let Some(rest) = normalized.strip_prefix("ctrl-") {
+            let suffix = if rest.len() == 1 {
+                rest.to_ascii_uppercase()
+            } else {
+                rest.to_string()
+            };
+            parts.push(format!("C-{suffix}"));
+        } else if let Some(rest) = normalized.strip_prefix("alt-") {
+            parts.push(format!("M-{rest}"));
+        } else if let Some(rest) = normalized.strip_prefix("shift-") {
+            if rest.len() == 1 {
+                parts.push(rest.to_ascii_uppercase());
+            } else {
+                parts.push(rest.to_string());
+            }
+        } else {
+            parts.push(step.to_string());
+        }
+    }
+    parts.join(" ")
 }
 
 fn render_plain() -> String {
@@ -507,6 +532,12 @@ mod tests {
         assert_eq!(zsh_binding("ctrl-]"), "^]");
         assert_eq!(fish_binding("ctrl-]"), "\\c]");
         assert_eq!(terminal_binding_key("ctrl-]"), Some("]".to_string()));
+    }
+
+    #[test]
+    fn tmux_binding_accepts_shell_style_ctrl_syntax() {
+        assert_eq!(tmux_binding("ctrl-]"), "C-]");
+        assert_eq!(tmux_binding("/"), "/");
     }
 
     #[test]
