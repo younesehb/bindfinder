@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.21 - 2026-03-13
+
+- add first-class `all / commands / keys` result scopes in the TUI and CLI
+- group `all` results into `Commands` and `Keys` sections in the TUI
+- parse local tmux bindings from real tmux config files, including prefix detection and simple `source-file` includes
+- normalize local tmux key display and dedupe repeated local bindings
+- add YAML overrides for built-in and imported entries under `~/.config/bindfinder/overrides`
+- add `bindfinder config keys` and `bindfinder config commands` editor flows for override files
+- add `bindfinder packs import` and `bindfinder packs list` for native bindfinder YAML pack repositories
+- persist the `show hidden` view toggle across sessions
+- improve result list readability and make spacer rows non-selectable
+
 ## 0.1.20 - 2026-03-13
 
 - make `bindfinder config` validate and reload integrations automatically after the editor exits

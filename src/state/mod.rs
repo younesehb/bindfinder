@@ -15,6 +15,8 @@ pub struct UserState {
     pub favorite_tools: HashSet<String>,
     #[serde(default)]
     pub hidden_tools: HashSet<String>,
+    #[serde(default)]
+    pub show_hidden: bool,
 }
 
 impl UserState {
@@ -101,6 +103,10 @@ impl UserState {
             self.hidden_tools.insert(tool.to_string());
             true
         }
+    }
+
+    pub fn set_show_hidden(&mut self, value: bool) {
+        self.show_hidden = value;
     }
 }
 

@@ -8,9 +8,17 @@ use anyhow::{anyhow, Result};
 use crate::core::{
     navi,
     pack::{parse_pack_file, parse_pack_str, Entry, Pack},
+    pack_repo, tmux,
 };
 use crate::paths;
 use crate::state::UserState;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchScope {
+    All,
+    Commands,
+    Keys,
+}
 
 #[derive(Debug, Clone)]
 pub struct Catalog {
@@ -43,6 +51,21 @@ impl Catalog {
                 packs.extend(navi::load_repo(&repo_dir)?);
             }
         }
+        if let Some(dir) = default_pack_repo_dir() {
+            for repo_dir in discover_repo_dirs(&dir)? {
+                packs.extend(pack_repo::load_repo(&repo_dir)?);
+            }
+        }
+        if let Some(pack) = tmux::load_local_pack()? {
+            packs.push(pack);
+        }
+        if let Some(dir) = default_override_dir() {
+            let overrides = discover_pack_files(&dir)?
+                .into_iter()
+                .map(|path| parse_pack_file(&path))
+                .collect::<Result<Vec<_>>>()?;
+            apply_overrides(&mut packs, overrides);
+        }
 
         Self::from_packs(packs)
     }
@@ -53,6 +76,14 @@ impl Catalog {
 
     pub fn default_navi_repo_dir() -> Option<PathBuf> {
         default_navi_repo_dir()
+    }
+
+    pub fn default_pack_repo_dir() -> Option<PathBuf> {
+        default_pack_repo_dir()
+    }
+
+    pub fn default_override_dir() -> Option<PathBuf> {
+        default_override_dir()
     }
 
     pub fn from_packs(packs: Vec<Pack>) -> Result<Self> {
@@ -95,6 +126,7 @@ impl Catalog {
         state: &UserState,
         include_hidden: bool,
         favorites_only: bool,
+        scope: SearchScope,
     ) -> Vec<&'a CatalogEntry> {
         let query = query.trim().to_ascii_lowercase();
         let terms = query
@@ -114,6 +146,7 @@ impl Catalog {
                     || state.is_entry_favorite(&item.qualified_id())
                     || state.is_tool_favorite(&item.tool)
             })
+            .filter(|item| scope.includes_entry(item))
             .filter(|item| matches_query(item, &query, &terms))
             .collect::<Vec<_>>();
 
@@ -151,6 +184,46 @@ impl Catalog {
 impl CatalogEntry {
     pub fn qualified_id(&self) -> String {
         format!("{}:{}", self.pack_id, self.entry.id)
+    }
+
+    pub fn is_local_config(&self) -> bool {
+        self.source == "local-config"
+    }
+
+    pub fn source_badge(&self) -> &'static str {
+        match self.source.as_str() {
+            "local-config" => "local",
+            "built-in" => "default",
+            _ => "extra",
+        }
+    }
+}
+
+impl SearchScope {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::All => "all",
+            Self::Commands => "commands",
+            Self::Keys => "keys",
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            Self::All => Self::Commands,
+            Self::Commands => Self::Keys,
+            Self::Keys => Self::All,
+        }
+    }
+
+    pub fn includes_entry(self, item: &CatalogEntry) -> bool {
+        match self {
+            Self::All => true,
+            Self::Commands => {
+                !matches!(item.entry.entry_type, crate::core::pack::EntryType::Binding)
+            }
+            Self::Keys => matches!(item.entry.entry_type, crate::core::pack::EntryType::Binding),
+        }
     }
 }
 
@@ -213,6 +286,7 @@ fn rank(item: &CatalogEntry, query: &str, terms: &[&str], state: &UserState) -> 
         20
     };
 
+    let source_boost: usize = if item.is_local_config() { 5 } else { 0 };
     let boost: usize = if state.is_entry_favorite(&item.qualified_id()) {
         30
     } else if state.is_tool_favorite(&item.tool) {
@@ -221,7 +295,7 @@ fn rank(item: &CatalogEntry, query: &str, terms: &[&str], state: &UserState) -> 
         0
     };
 
-    base.saturating_sub(boost)
+    base.saturating_sub(boost + source_boost)
 }
 
 fn search_blob(item: &CatalogEntry) -> String {
@@ -272,6 +346,64 @@ fn default_navi_repo_dir() -> Option<PathBuf> {
     }
 
     paths::bindfinder_data_dir("repos")
+}
+
+fn default_pack_repo_dir() -> Option<PathBuf> {
+    if let Ok(dir) = env::var("BINDFINDER_PACK_REPOS_DIR") {
+        let path = PathBuf::from(dir);
+        if !path.as_os_str().is_empty() {
+            return Some(path);
+        }
+    }
+
+    paths::bindfinder_data_dir("pack-repos")
+}
+
+fn default_override_dir() -> Option<PathBuf> {
+    if let Ok(dir) = env::var("BINDFINDER_OVERRIDE_DIR") {
+        let path = PathBuf::from(dir);
+        if !path.as_os_str().is_empty() {
+            return Some(path);
+        }
+    }
+
+    paths::bindfinder_config_dir("overrides")
+}
+
+fn apply_overrides(packs: &mut Vec<Pack>, overrides: Vec<Pack>) {
+    for override_pack in overrides {
+        if let Some(existing) = packs
+            .iter_mut()
+            .find(|pack| pack.pack.id == override_pack.pack.id)
+        {
+            if !override_pack.pack.tool.trim().is_empty() {
+                existing.pack.tool = override_pack.pack.tool.clone();
+            }
+            if !override_pack.pack.title.trim().is_empty() {
+                existing.pack.title = override_pack.pack.title.clone();
+            }
+            if !override_pack.pack.version.trim().is_empty() {
+                existing.pack.version = override_pack.pack.version.clone();
+            }
+            if !override_pack.pack.source.trim().is_empty() {
+                existing.pack.source = override_pack.pack.source.clone();
+            }
+
+            for override_entry in override_pack.entries {
+                if let Some(existing_entry) = existing
+                    .entries
+                    .iter_mut()
+                    .find(|entry| entry.id == override_entry.id)
+                {
+                    *existing_entry = override_entry;
+                } else {
+                    existing.entries.push(override_entry);
+                }
+            }
+        } else {
+            packs.push(override_pack);
+        }
+    }
 }
 
 fn discover_pack_files(dir: &Path) -> Result<Vec<PathBuf>> {
@@ -352,7 +484,13 @@ mod tests {
     #[test]
     fn multi_term_filter_matches_expected_entry() {
         let catalog = Catalog::from_packs(vec![sample_pack()]).expect("catalog should build");
-        let matches = catalog.filter_with_state("tmux split", &UserState::default(), false, false);
+        let matches = catalog.filter_with_state(
+            "tmux split",
+            &UserState::default(),
+            false,
+            false,
+            SearchScope::All,
+        );
 
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].entry.id, "split-horizontal");
@@ -362,5 +500,117 @@ mod tests {
     fn tools_are_deduplicated() {
         let catalog = Catalog::from_packs(vec![sample_pack()]).expect("catalog should build");
         assert_eq!(catalog.tools(), vec!["tmux"]);
+    }
+
+    #[test]
+    fn keys_scope_only_returns_bindings() {
+        let catalog = Catalog::from_packs(vec![sample_pack()]).expect("catalog should build");
+        let matches = catalog.filter_with_state(
+            "tmux",
+            &UserState::default(),
+            false,
+            false,
+            SearchScope::Keys,
+        );
+
+        assert_eq!(matches.len(), 2);
+        assert!(matches
+            .iter()
+            .all(|item| matches!(item.entry.entry_type, EntryType::Binding)));
+    }
+
+    #[test]
+    fn commands_scope_excludes_bindings() {
+        let mut pack = sample_pack();
+        pack.entries.push(Entry {
+            id: "split-command".into(),
+            entry_type: EntryType::Command,
+            title: "Split window command".into(),
+            keys: None,
+            command: Some("tmux split-window".into()),
+            description: "Split a pane from the command line.".into(),
+            examples: vec![],
+            tags: vec!["panes".into()],
+            aliases: vec!["split pane".into()],
+        });
+
+        let catalog = Catalog::from_packs(vec![pack]).expect("catalog should build");
+        let matches = catalog.filter_with_state(
+            "split",
+            &UserState::default(),
+            false,
+            false,
+            SearchScope::Commands,
+        );
+
+        assert_eq!(matches.len(), 1);
+        assert!(matches!(matches[0].entry.entry_type, EntryType::Command));
+    }
+
+    #[test]
+    fn overrides_replace_matching_entries() {
+        let mut packs = vec![sample_pack()];
+        apply_overrides(
+            &mut packs,
+            vec![Pack {
+                pack: PackMeta {
+                    id: "sample".into(),
+                    tool: "tmux".into(),
+                    title: "Sample Overrides".into(),
+                    version: "0.2.0".into(),
+                    source: "override".into(),
+                },
+                entries: vec![Entry {
+                    id: "split-horizontal".into(),
+                    entry_type: EntryType::Binding,
+                    title: "Split Pane With Custom Key".into(),
+                    keys: Some("Ctrl-a + |".into()),
+                    command: Some("split-window -h".into()),
+                    description: "Custom split binding".into(),
+                    examples: vec![],
+                    tags: vec!["custom".into()],
+                    aliases: vec![],
+                }],
+            }],
+        );
+
+        assert_eq!(packs.len(), 1);
+        assert_eq!(packs[0].pack.source, "override");
+        assert_eq!(packs[0].entries[0].title, "Split Pane With Custom Key");
+        assert_eq!(packs[0].entries[0].keys.as_deref(), Some("Ctrl-a + |"));
+    }
+
+    #[test]
+    fn overrides_add_new_entries() {
+        let mut packs = vec![sample_pack()];
+        apply_overrides(
+            &mut packs,
+            vec![Pack {
+                pack: PackMeta {
+                    id: "sample".into(),
+                    tool: "tmux".into(),
+                    title: "Sample".into(),
+                    version: "0.1.0".into(),
+                    source: "override".into(),
+                },
+                entries: vec![Entry {
+                    id: "new-window".into(),
+                    entry_type: EntryType::Binding,
+                    title: "Create window".into(),
+                    keys: Some("Ctrl-a + c".into()),
+                    command: Some("new-window".into()),
+                    description: "Create a new window".into(),
+                    examples: vec![],
+                    tags: vec![],
+                    aliases: vec![],
+                }],
+            }],
+        );
+
+        assert_eq!(packs[0].entries.len(), 3);
+        assert!(packs[0]
+            .entries
+            .iter()
+            .any(|entry| entry.id == "new-window"));
     }
 }

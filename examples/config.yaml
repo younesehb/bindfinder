@@ -47,7 +47,7 @@ integration:
   mode: "auto"
   tmux:
     enabled: true
-    key: "ctrl-]"
+    key: "]"
     use_popup: false
     popup_width: "80%"
     popup_height: "80%"

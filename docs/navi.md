@@ -2,6 +2,9 @@
 
 `bindfinder` can import and search navi-style `.cheat` repositories.
 
+Use navi imports for command/snippet content. For reusable bindfinder YAML packs
+that can include both commands and keybindings, use `bindfinder packs import`.
+
 ## Featured Repositories
 
 The featured repository list is based on the curated list published in

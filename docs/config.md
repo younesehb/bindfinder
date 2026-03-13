@@ -11,6 +11,24 @@ bindfinder config
 When the editor exits, bindfinder validates the config and runs the same reload
 path as `bindfinder reload`.
 
+Open your key override file with:
+
+```bash
+bindfinder config keys
+```
+
+This opens `~/.config/bindfinder/overrides/keys.yaml` in the same preferred
+editor flow. If the file does not exist yet, bindfinder creates a starter
+override pack first and validates it when the editor exits.
+
+Open your command override file with:
+
+```bash
+bindfinder config commands
+```
+
+This opens `~/.config/bindfinder/overrides/commands.yaml` using the same flow.
+
 Default config path:
 
 ```bash
@@ -60,7 +78,7 @@ integration:
   mode: "auto"
   tmux:
     enabled: true
-    key: "ctrl-]"
+    key: "]"
     use_popup: false
     popup_width: "80%"
     popup_height: "80%"
@@ -80,16 +98,15 @@ Launch keys:
 - `integration.tmux.key` is the key pressed after your tmux prefix.
 - With the current defaults that means:
   - outside tmux: `Ctrl-]`
-  - inside tmux: `prefix + Ctrl-]`
-- use the same `ctrl-...]` style in YAML for both shell and tmux
-- bindfinder converts the tmux key to tmux syntax internally when it writes the tmux binding
+  - inside tmux: `prefix + ]`
 
 TUI behavior:
 
 - The app starts in search mode so typing immediately updates the filter.
-- In search mode, typing updates the filter, `Up`/`Down` move the selection, and `Esc` enters normal mode.
-- Normal mode uses vim-style navigation: `j`/`k`, `Ctrl-d`/`Ctrl-u`, `gg`, `G`, `/`.
+- In search mode, typing updates the filter, `Up`/`Down` move the selection, `Tab` cycles the result scope, and `Esc` enters normal mode.
+- Normal mode uses vim-style navigation: `j`/`k`, `Ctrl-d`/`Ctrl-u`, `gg`, `G`, `/`, `Tab`.
 - Normal mode also supports user state actions: `z` toggle hidden visibility, `m` toggle favorites-only view, `f` favorite entry, `x` hide entry, `F` favorite tool, `X` hide tool.
+- The scope cycles between `all`, `commands`, and `keys`.
 - Press `/` to return to search mode and clear the current query.
 - If the selected command contains placeholders like `<branch>` or `<package>`, `bindfinder` opens an argument form inside the TUI before inserting the final command.
 - In the argument form, placeholders are prefilled with their current names. Leave them unchanged if you want the same behavior as before.
@@ -140,6 +157,19 @@ shells instead of only being printed to stdout.
 When you use tmux integration, `bindfinder` uses the internal `tmux-launch` and
 `tmux-capture` flow to open the picker and paste the selected command back into
 the original pane.
+
+`bindfinder` also reads local tmux bindings from your actual tmux config files.
+By default it looks at `~/.tmux.conf` and `~/.config/tmux/tmux.conf`, follows
+simple `source-file` includes, and surfaces those bindings in the `keys` scope.
+
+Override packs:
+
+- place YAML packs in `~/.config/bindfinder/overrides`
+- if an override pack uses the same `pack.id` and `entry.id` as an existing pack,
+  it replaces that entry
+- if an override pack adds a new `entry.id`, it is appended to that pack
+- this is the supported way to customize built-in key or command entries without
+  editing the shipped files
 
 The project also ships a man page. Cargo does not install it automatically, but
 you can place it in the standard local man directory with:

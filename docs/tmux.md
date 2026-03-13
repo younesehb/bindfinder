@@ -24,19 +24,20 @@ In the current implementation, the installed tmux binding calls the internal
 - captures the selected command
 - pastes it back into the original pane
 - closes the temporary pane when appropriate
+- also loads your real tmux bindings from `~/.tmux.conf` and sourced files into the `keys` scope
 
 ## Default Binding
 
 The default tmux key is:
 
 ```tmux
-prefix + Ctrl-]
+prefix + ]
 ```
 
 If your tmux prefix is `C-a`, that means:
 
 ```text
-Ctrl-a Ctrl-]
+Ctrl-a ]
 ```
 
 ## Split Mode (Default)
@@ -44,7 +45,7 @@ Ctrl-a Ctrl-]
 When `integration.tmux.use_popup: false`, the generated binding looks like:
 
 ```tmux
-bind-key C-] run-shell "/home/USER/.local/bin/bindfinder tmux-launch"
+bind-key ] run-shell "/home/USER/.local/bin/bindfinder tmux-launch"
 ```
 
 In the YAML config, set:
@@ -52,10 +53,8 @@ In the YAML config, set:
 ```yaml
 integration:
   tmux:
-    key: "ctrl-]"
+    key: "]"
 ```
-
-bindfinder converts that to tmux's `C-]` syntax internally.
 
 The `tmux-launch` subcommand opens a vertical split sized for the TUI and then
 reinjects the selected command into the original pane.

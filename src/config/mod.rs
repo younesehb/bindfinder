@@ -706,7 +706,7 @@ fn default_shell_binding() -> String {
 }
 
 fn default_tmux_key() -> String {
-    "ctrl-]".to_string()
+    "]".to_string()
 }
 
 fn default_popup_width() -> String {
@@ -811,7 +811,9 @@ integration:
             .expect("default config should serialize");
         assert!(yaml.contains("integration:"));
         assert!(yaml.contains("binding: ctrl-]"));
-        assert!(yaml.contains("key: ctrl-]"));
+        assert!(
+            yaml.contains("key: \"]\"") || yaml.contains("key: ']'") || yaml.contains("key: ]")
+        );
     }
 
     #[test]
@@ -879,5 +881,25 @@ integration:
         fs::remove_file(&path).ok();
 
         assert_eq!(config.integration.tmux.key, "ctrl-]");
+    }
+
+    #[test]
+    fn tmux_key_accepts_plain_closing_bracket() {
+        let yaml = r#"
+integration:
+  tmux:
+    key: "]"
+"#;
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let path = env::temp_dir().join(format!("bindfinder-config-{stamp}.yaml"));
+        fs::write(&path, yaml).expect("write config");
+
+        let config = AppConfig::load_from_path(Some(&path)).expect("config should parse");
+        fs::remove_file(&path).ok();
+
+        assert_eq!(config.integration.tmux.key, "]");
     }
 }

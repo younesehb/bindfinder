@@ -17,6 +17,17 @@ entries:
     tags: ["panes", "layout"]
     aliases: ["split pane horizontal", "new pane below"]
 
+  - id: "split-window"
+    type: "command"
+    title: "Split Window"
+    command: "tmux split-window"
+    description: "Split the current pane into two panes from the command line."
+    examples:
+      - "tmux split-window"
+      - "tmux split-window -c '#{pane_current_path}'"
+    tags: ["panes", "layout", "command"]
+    aliases: ["split pane", "split pane horizontal", "split tmux pane"]
+
   - id: "split-vertical"
     type: "binding"
     title: "Split Pane Vertically"
@@ -27,6 +38,17 @@ entries:
       - "Use this for side-by-side work."
     tags: ["panes", "layout"]
     aliases: ["split pane vertical", "new pane right"]
+
+  - id: "split-window-horizontal"
+    type: "command"
+    title: "Split Window Horizontally"
+    command: "tmux split-window -h"
+    description: "Split the current pane side by side from the command line."
+    examples:
+      - "tmux split-window -h"
+      - "tmux split-window -h -c '#{pane_current_path}'"
+    tags: ["panes", "layout", "command"]
+    aliases: ["split pane vertical", "split side by side"]
 
   - id: "new-window"
     type: "binding"
@@ -39,6 +61,17 @@ entries:
     tags: ["windows", "session"]
     aliases: ["create window", "new tab"]
 
+  - id: "new-window-command"
+    type: "command"
+    title: "New Window Command"
+    command: "tmux new-window"
+    description: "Create a new tmux window from the command line."
+    examples:
+      - "tmux new-window"
+      - "tmux new-window -n logs"
+    tags: ["windows", "session", "command"]
+    aliases: ["create window", "new tmux window"]
+
   - id: "copy-mode"
     type: "binding"
     title: "Enter Copy Mode"
@@ -49,3 +82,13 @@ entries:
       - "In vi copy mode, use / to search and Space to start selection."
     tags: ["copy", "scrollback"]
     aliases: ["scroll mode", "history mode"]
+
+  - id: "copy-mode-command"
+    type: "command"
+    title: "Copy Mode Command"
+    command: "tmux copy-mode"
+    description: "Enter copy mode from the command line."
+    examples:
+      - "tmux copy-mode"
+    tags: ["copy", "scrollback", "command"]
+    aliases: ["enter copy mode", "history mode"]

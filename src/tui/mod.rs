@@ -17,7 +17,7 @@ use ratatui::{
 
 use crate::{
     config::AppConfig,
-    core::catalog::{Catalog, CatalogEntry},
+    core::catalog::{Catalog, CatalogEntry, SearchScope},
     integration::{detect::EnvironmentInfo, install::effective_hotkey},
     state::UserState,
     update::UpdateInfo,
@@ -143,6 +143,7 @@ fn run_app(
                 let preview =
                     build_preview(app.selected_entry().cloned(), app.catalog.is_empty(), &app.state);
                 let result_count = app.filtered.len();
+                let scope_flag = format!("  [scope: {}]", app.scope.label());
                 let hidden_flag = if app.show_hidden { "  [hidden visible]" } else { "" };
                 let favorites_flag = if app.favorites_only { "  [favorites only]" } else { "" };
                 let update_flag = app
@@ -156,10 +157,11 @@ fn run_app(
                     })
                     .unwrap_or_default();
                 let title = format!(
-                    "bindfinder  {} entries  {} matches  open: {}{}{}{}",
+                    "bindfinder  {} entries  {} matches  open: {}{}{}{}{}",
                     app.catalog.len(),
                     result_count,
                     app.launch_hint,
+                    scope_flag,
                     hidden_flag,
                     favorites_flag,
                     update_flag
@@ -188,7 +190,7 @@ fn run_app(
                         .split(areas[1]);
 
                 frame.render_stateful_widget(
-                    List::new(build_items(&app.filtered, &app.state))
+                    List::new(app.rendered_items.clone())
                         .block(Block::default().borders(Borders::ALL).title("Results"))
                         .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
                         .highlight_symbol("> "),
@@ -207,10 +209,10 @@ fn run_app(
                 if app.config.settings.show_footer {
                     let footer = match app.input_mode {
                         InputMode::Normal => {
-                            "Normal: j/k move  Ctrl-d/Ctrl-u page  gg/G ends  / search  z hidden  m favorites  f/x entry  F/X tool  Enter select"
+                            "Normal: j/k move  Ctrl-d/Ctrl-u page  gg/G ends  Tab scope  / search  z hidden  m favorites  f/x entry  F/X tool  Enter select"
                         }
                         InputMode::Search => {
-                            "Search: type filter  Up/Down move  Ctrl-d/Ctrl-u page  Enter select  Esc normal"
+                            "Search: type filter  Up/Down move  Ctrl-d/Ctrl-u page  Tab scope  Enter select  Esc normal"
                         }
                         InputMode::Arguments => "",
                     };
@@ -250,11 +252,14 @@ struct App {
     state: UserState,
     query: String,
     filtered: Vec<CatalogEntry>,
+    rendered_items: Vec<ListItem<'static>>,
+    selectable_rows: Vec<usize>,
     list_state: ListState,
     input_mode: InputMode,
     pending_sequence: Vec<crate::config::KeyBinding>,
     show_hidden: bool,
     favorites_only: bool,
+    scope: SearchScope,
     argument_prompt: Option<ArgumentPrompt>,
     update_notice: Option<UpdateInfo>,
     launch_hint: String,
@@ -298,17 +303,21 @@ impl App {
     ) -> Self {
         let target = environment.choose_target(&config);
         let launch_hint = launch_hint_label(&target, &config);
+        let show_hidden = state.show_hidden;
         let mut app = Self {
             config,
             catalog,
             state,
             query: String::new(),
             filtered: Vec::new(),
+            rendered_items: Vec::new(),
+            selectable_rows: Vec::new(),
             list_state: ListState::default(),
             input_mode: InputMode::Search,
             pending_sequence: Vec::new(),
-            show_hidden: false,
+            show_hidden,
             favorites_only: false,
+            scope: SearchScope::All,
             argument_prompt: None,
             update_notice,
             launch_hint,
@@ -325,22 +334,26 @@ impl App {
                 &self.state,
                 self.show_hidden,
                 self.favorites_only,
+                self.scope,
             )
             .into_iter()
             .cloned()
             .collect();
 
-        let next_index = match self.list_state.selected() {
+        let rendered = build_items(&self.filtered, &self.state, self.scope);
+        self.rendered_items = rendered.items;
+        self.selectable_rows = rendered.selectable_rows;
+
+        let next_index = match self.selected_logical_index() {
             Some(index) if index < self.filtered.len() => Some(index),
             _ if self.filtered.is_empty() => None,
             _ => Some(0),
         };
-        self.list_state.select(next_index);
+        self.set_selected_logical_index(next_index);
     }
 
     fn selected_entry(&self) -> Option<&CatalogEntry> {
-        self.list_state
-            .selected()
+        self.selected_logical_index()
             .and_then(|index| self.filtered.get(index))
     }
 
@@ -369,6 +382,12 @@ impl App {
                 self.pending_sequence.clear();
                 return None;
             }
+            (KeyCode::Tab, KeyModifiers::NONE) => {
+                self.scope = self.scope.next();
+                self.pending_sequence.clear();
+                self.refresh();
+                return None;
+            }
             _ if self.config.keybindings.matches_move_down(key) => {
                 self.move_selection(1);
                 self.pending_sequence.clear();
@@ -391,6 +410,8 @@ impl App {
             }
             _ if self.config.keybindings.matches_toggle_hidden(key) => {
                 self.show_hidden = !self.show_hidden;
+                self.state.set_show_hidden(self.show_hidden);
+                let _ = self.state.save();
                 self.pending_sequence.clear();
                 self.refresh();
                 return None;
@@ -523,6 +544,10 @@ impl App {
                 self.input_mode = InputMode::Normal;
                 self.pending_sequence.clear();
             }
+            (KeyCode::Tab, KeyModifiers::NONE) => {
+                self.scope = self.scope.next();
+                self.refresh();
+            }
             (KeyCode::Backspace, _) => {
                 self.query.pop();
                 self.refresh();
@@ -606,10 +631,10 @@ impl App {
             return;
         }
 
-        let current = self.list_state.selected().unwrap_or(0) as isize;
+        let current = self.selected_logical_index().unwrap_or(0) as isize;
         let max = self.filtered.len() as isize - 1;
         let next = (current + delta).clamp(0, max) as usize;
-        self.list_state.select(Some(next));
+        self.set_selected_logical_index(Some(next));
     }
 
     fn move_page(&mut self, pages: isize) {
@@ -621,8 +646,7 @@ impl App {
         if self.filtered.is_empty() {
             self.list_state.select(None);
         } else {
-            self.list_state
-                .select(Some(index.min(self.filtered.len() - 1)));
+            self.set_selected_logical_index(Some(index.min(self.filtered.len() - 1)));
         }
     }
 
@@ -630,7 +654,7 @@ impl App {
         if self.filtered.is_empty() {
             self.list_state.select(None);
         } else {
-            self.list_state.select(Some(self.filtered.len() - 1));
+            self.set_selected_logical_index(Some(self.filtered.len() - 1));
         }
     }
 
@@ -680,8 +704,20 @@ impl App {
             .iter()
             .position(|entry| entry.qualified_id() == qualified_id)
         {
-            self.list_state.select(Some(index));
+            self.set_selected_logical_index(Some(index));
         }
+    }
+
+    fn selected_logical_index(&self) -> Option<usize> {
+        let row = self.list_state.selected()?;
+        self.selectable_rows
+            .iter()
+            .position(|candidate| *candidate == row)
+    }
+
+    fn set_selected_logical_index(&mut self, index: Option<usize>) {
+        self.list_state
+            .select(index.and_then(|index| self.selectable_rows.get(index).copied()));
     }
 
     fn selected_output(&mut self) -> Option<String> {
@@ -733,28 +769,115 @@ fn launch_hint_label(
     effective_hotkey(config, target)
 }
 
-fn build_items<'a>(entries: &'a [CatalogEntry], state: &'a UserState) -> Vec<ListItem<'a>> {
+struct RenderedItems {
+    items: Vec<ListItem<'static>>,
+    selectable_rows: Vec<usize>,
+}
+
+fn build_items(entries: &[CatalogEntry], state: &UserState, scope: SearchScope) -> RenderedItems {
     if entries.is_empty() {
-        return vec![ListItem::new("No matches")];
+        return RenderedItems {
+            items: vec![ListItem::new("No matches")],
+            selectable_rows: Vec::new(),
+        };
     }
 
-    entries
-        .iter()
-        .map(|item| {
-            let marker = item_marker(item, state);
-            let meta = match (&item.entry.keys, &item.entry.command) {
-                (Some(keys), Some(command)) => format!("{} | {}", keys, command),
-                (Some(keys), None) => keys.to_string(),
-                (None, Some(command)) => command.to_string(),
-                (None, None) => item.entry.entry_type.as_str().to_string(),
-            };
+    let mut items = Vec::new();
+    let mut selectable_rows = Vec::new();
+    let mut row_index = 0usize;
 
-            ListItem::new(vec![
-                Line::raw(format!("{} {}: {}", marker, item.tool, item.entry.title)),
-                Line::raw(format!("  {}", meta)),
-            ])
-        })
-        .collect()
+    let commands = entries
+        .iter()
+        .filter(|item| !matches!(item.entry.entry_type, crate::core::pack::EntryType::Binding))
+        .collect::<Vec<_>>();
+    let keys = entries
+        .iter()
+        .filter(|item| matches!(item.entry.entry_type, crate::core::pack::EntryType::Binding))
+        .collect::<Vec<_>>();
+
+    if scope == SearchScope::All {
+        if !commands.is_empty() {
+            items.push(section_header("Commands"));
+            row_index += 1;
+            push_result_group(
+                &mut items,
+                &mut selectable_rows,
+                &mut row_index,
+                &commands,
+                state,
+            );
+        }
+        if !keys.is_empty() {
+            if !items.is_empty() {
+                items.push(ListItem::new(Line::raw("")));
+                row_index += 1;
+            }
+            items.push(section_header("Keys"));
+            row_index += 1;
+            push_result_group(
+                &mut items,
+                &mut selectable_rows,
+                &mut row_index,
+                &keys,
+                state,
+            );
+        }
+    } else {
+        let group = if scope == SearchScope::Commands {
+            commands
+        } else {
+            keys
+        };
+        push_result_group(
+            &mut items,
+            &mut selectable_rows,
+            &mut row_index,
+            &group,
+            state,
+        );
+    }
+
+    RenderedItems {
+        items,
+        selectable_rows,
+    }
+}
+
+fn push_result_group(
+    items: &mut Vec<ListItem<'static>>,
+    selectable_rows: &mut Vec<usize>,
+    row_index: &mut usize,
+    entries: &[&CatalogEntry],
+    state: &UserState,
+) {
+    for (index, item) in entries.iter().enumerate() {
+        let marker = item_marker(item, state);
+        let meta = match (&item.entry.keys, &item.entry.command) {
+            (Some(keys), Some(command)) => format!("{} | {}", keys, command),
+            (Some(keys), None) => keys.to_string(),
+            (None, Some(command)) => command.to_string(),
+            (None, None) => item.entry.entry_type.as_str().to_string(),
+        };
+
+        items.push(ListItem::new(vec![
+            Line::raw(format!("{} {}: {}", marker, item.tool, item.entry.title)),
+            Line::raw(format!("    {}", meta)),
+        ]));
+        selectable_rows.push(*row_index);
+        *row_index += 1;
+
+        if index + 1 != entries.len() {
+            items.push(ListItem::new(Line::raw("")));
+            *row_index += 1;
+        }
+    }
+}
+
+fn section_header(title: &str) -> ListItem<'static> {
+    ListItem::new(Line::styled(
+        title.to_string(),
+        Style::default().add_modifier(Modifier::BOLD),
+    ))
 }
 
 fn build_preview(
@@ -774,6 +897,7 @@ fn build_preview(
         Line::raw(format!("Tool: {}", item.tool)),
         Line::raw(format!("Title: {}", item.entry.title)),
         Line::raw(format!("Type: {}", item.entry.entry_type.as_str())),
+        Line::raw(format!("Source: {}", item.source_badge())),
     ];
 
     let qualified_id = item.qualified_id();
@@ -829,7 +953,7 @@ fn build_preview(
     lines.push(Line::raw(format!("Pack: {}", item.pack_title)));
     lines.push(Line::raw(format!("Pack ID: {}", item.pack_id)));
     lines.push(Line::raw(format!("Entry ID: {}", item.qualified_id())));
-    lines.push(Line::raw(format!("Source: {}", item.source)));
+    lines.push(Line::raw(format!("Source ID: {}", item.source)));
 
     Text::from(lines)
 }
@@ -972,17 +1096,30 @@ mod tests {
                 version: "0.1.0".to_string(),
                 source: "test".to_string(),
             },
-            entries: vec![Entry {
-                id: "split-pane".to_string(),
-                entry_type: EntryType::Command,
-                title: "Split pane".to_string(),
-                keys: Some("%".to_string()),
-                command: Some("tmux split-window".to_string()),
-                description: "Split the current pane".to_string(),
-                examples: Vec::new(),
-                tags: Vec::new(),
-                aliases: vec!["split".to_string()],
-            }],
+            entries: vec![
+                Entry {
+                    id: "split-pane".to_string(),
+                    entry_type: EntryType::Command,
+                    title: "Split pane".to_string(),
+                    keys: Some("%".to_string()),
+                    command: Some("tmux split-window".to_string()),
+                    description: "Split the current pane".to_string(),
+                    examples: Vec::new(),
+                    tags: Vec::new(),
+                    aliases: vec!["split".to_string()],
+                },
+                Entry {
+                    id: "split-pane-key".to_string(),
+                    entry_type: EntryType::Binding,
+                    title: "Split pane key".to_string(),
+                    keys: Some("Prefix + %".to_string()),
+                    command: None,
+                    description: "Split the current pane with a keybinding".to_string(),
+                    examples: Vec::new(),
+                    tags: Vec::new(),
+                    aliases: vec!["split".to_string()],
+                },
+            ],
         }])
         .expect("catalog should build")
     }
@@ -1149,5 +1286,55 @@ mod tests {
         assert!(result.is_none());
         assert_eq!(app.input_mode, InputMode::Normal);
         assert!(app.argument_prompt.is_none());
+    }
+
+    #[test]
+    fn tab_cycles_scope_and_refreshes_results() {
+        let mut app = App::new(
+            sample_catalog(),
+            AppConfig::default(),
+            UserState::default(),
+            None,
+            test_environment(),
+        );
+
+        app.query = "split".to_string();
+        app.refresh();
+        assert_eq!(app.scope, SearchScope::All);
+        assert_eq!(app.filtered.len(), 2);
+
+        let result = app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert!(result.is_none());
+        assert_eq!(app.scope, SearchScope::Commands);
+        assert_eq!(app.filtered.len(), 1);
+        assert!(matches!(
+            app.filtered[0].entry.entry_type,
+            EntryType::Command
+        ));
+
+        let result = app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert!(result.is_none());
+        assert_eq!(app.scope, SearchScope::Keys);
+        assert_eq!(app.filtered.len(), 1);
+        assert!(matches!(
+            app.filtered[0].entry.entry_type,
+            EntryType::Binding
+        ));
+    }
+
+    #[test]
+    fn app_uses_persisted_show_hidden_preference() {
+        let mut state = UserState::default();
+        state.show_hidden = true;
+
+        let app = App::new(
+            sample_catalog(),
+            AppConfig::default(),
+            state,
+            None,
+            test_environment(),
+        );
+
+        assert!(app.show_hidden);
     }
 }

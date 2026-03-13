@@ -12,7 +12,11 @@ use clap::{Args as ClapArgs, Parser, Subcommand, ValueEnum};
 
 use crate::{
     config::AppConfig,
-    core::{catalog::Catalog, navi, pack::parse_pack_file},
+    core::{
+        catalog::{Catalog, SearchScope},
+        navi,
+        pack::parse_pack_file,
+    },
     integration::{
         detect::EnvironmentInfo,
         install::{
@@ -32,7 +36,7 @@ use crate::{
     version,
     about = "Terminal-first command reference browser",
     long_about = "bindfinder is a terminal-first command reference browser for SSH, tmux, and shell-heavy workflows.\n\nRun it with no subcommand to open the TUI. The TUI starts in search mode so you can type immediately. Press Esc to enter normal mode for vim-style actions, and / to return to search mode.\n\nUse subcommands to inspect config paths, validate packs, print integration snippets, and search packs from the command line.",
-    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder doctor\n  bindfinder update\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config\n  bindfinder config init\n  bindfinder config validate\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Enter selects the current result"
+    after_help = "Examples:\n  bindfinder\n  bindfinder search tmux split pane\n  bindfinder search --type keys tmux split\n  bindfinder search --type commands tmux split\n  bindfinder doctor\n  bindfinder update\n  bindfinder install auto --write\n  bindfinder reload\n  bindfinder install man --write\n  bindfinder config\n  bindfinder config keys\n  bindfinder config commands\n  bindfinder config init\n  bindfinder config validate\n\nTUI flow:\n  Type immediately to filter\n  Esc enters normal mode\n  / returns to search mode\n  Tab cycles all / commands / keys\n  Enter selects the current result"
 )]
 struct Args {
     #[command(subcommand)]
@@ -63,6 +67,11 @@ enum Command {
     Navi {
         #[command(subcommand)]
         command: NaviCommand,
+    },
+    /// Browse and import bindfinder YAML pack repositories
+    Packs {
+        #[command(subcommand)]
+        command: PackRepoCommand,
     },
     #[command(hide = true)]
     TmuxCapture {
@@ -105,9 +114,16 @@ struct InstallArgs {
 #[derive(Debug, ClapArgs)]
 #[command(
     about = "Search packs from the command line",
-    long_about = "Search loaded built-in and local packs from the command line and print tab-separated results.\n\nEach result includes tool, title, type, keys, and command."
+    long_about = "Search loaded built-in and local packs from the command line and print tab-separated results.\n\nEach result includes tool, title, type, keys, and command. Use --type to limit output to commands or keybindings."
 )]
 struct SearchArgs {
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SearchType::All,
+        help = "Limit search results to commands or keys"
+    )]
+    r#type: SearchType,
     #[arg(required = true, help = "Search terms to match against loaded entries")]
     query: Vec<String>,
 }
@@ -176,7 +192,25 @@ enum NaviCommand {
 }
 
 #[derive(Debug, Subcommand)]
+enum PackRepoCommand {
+    /// List locally imported bindfinder pack repositories
+    List,
+    /// Import a bindfinder pack repository into the local repo cache
+    Import {
+        #[arg(
+            value_name = "REPO",
+            help = "Repository URL, SSH URL, or owner/repo shorthand"
+        )]
+        repo: String,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 enum ConfigCommand {
+    #[command(about = "Open the user key override file in your editor")]
+    Keys,
+    #[command(about = "Open the user command override file in your editor")]
+    Commands,
     #[command(about = "Write the default config file to the standard config path")]
     Init {
         #[arg(long, help = "Overwrite an existing config file")]
@@ -204,6 +238,13 @@ enum ListKind {
     Sources,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum SearchType {
+    All,
+    Commands,
+    Keys,
+}
+
 pub fn run() -> Result<()> {
     let _ = ensure_default_man_page();
     let args = Args::parse();
@@ -212,6 +253,8 @@ pub fn run() -> Result<()> {
         None => tui::run(),
         Some(Command::Config(args)) => match args.command {
             None => open_config_in_editor(),
+            Some(ConfigCommand::Keys) => open_keys_override_in_editor(),
+            Some(ConfigCommand::Commands) => open_commands_override_in_editor(),
             Some(ConfigCommand::Init { force }) => {
                 let config = AppConfig::default();
                 let path =
@@ -404,9 +447,14 @@ pub fn run() -> Result<()> {
         }
         Some(Command::Search(args)) => {
             let catalog = Catalog::load_all()?;
-            let state = UserState::load().unwrap_or_default();
             let query = args.query.join(" ");
-            for item in catalog.filter_with_state(&query, &state, false, false) {
+            let scope = match args.r#type {
+                SearchType::All => SearchScope::All,
+                SearchType::Commands => SearchScope::Commands,
+                SearchType::Keys => SearchScope::Keys,
+            };
+            for item in catalog.filter_with_state(&query, &UserState::default(), true, false, scope)
+            {
                 println!(
                     "{}\t{}\t{}\t{}\t{}",
                     item.tool,
@@ -433,6 +481,15 @@ pub fn run() -> Result<()> {
                 }
                 ListKind::Sources => {
                     if let Some(dir) = Catalog::default_pack_dir() {
+                        println!("{}", dir.display());
+                    }
+                    if let Some(dir) = Catalog::default_override_dir() {
+                        println!("{}", dir.display());
+                    }
+                    if let Some(dir) = Catalog::default_navi_repo_dir() {
+                        println!("{}", dir.display());
+                    }
+                    if let Some(dir) = Catalog::default_pack_repo_dir() {
                         println!("{}", dir.display());
                     }
                 }
@@ -472,6 +529,52 @@ pub fn run() -> Result<()> {
             NaviCommand::Import { repo } => {
                 let dir = Catalog::default_navi_repo_dir()
                     .context("no navi repo directory could be determined")?;
+                std::fs::create_dir_all(&dir)?;
+                let remote = normalize_repo_url(&repo);
+                let target = dir.join(repo_dir_name(&repo));
+
+                let status = if target.exists() {
+                    ProcessCommand::new("git")
+                        .arg("-C")
+                        .arg(&target)
+                        .arg("pull")
+                        .arg("--ff-only")
+                        .status()?
+                } else {
+                    ProcessCommand::new("git")
+                        .arg("clone")
+                        .arg("--depth")
+                        .arg("1")
+                        .arg(&remote)
+                        .arg(&target)
+                        .status()?
+                };
+
+                if !status.success() {
+                    anyhow::bail!("git operation failed for {}", remote);
+                }
+
+                println!("{}", target.display());
+                Ok(())
+            }
+        },
+        Some(Command::Packs { command }) => match command {
+            PackRepoCommand::List => {
+                if let Some(dir) = Catalog::default_pack_repo_dir() {
+                    if dir.exists() {
+                        for entry in std::fs::read_dir(&dir)? {
+                            let path = entry?.path();
+                            if path.is_dir() {
+                                println!("{}", path.display());
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            }
+            PackRepoCommand::Import { repo } => {
+                let dir = Catalog::default_pack_repo_dir()
+                    .context("no pack repo directory could be determined")?;
                 std::fs::create_dir_all(&dir)?;
                 let remote = normalize_repo_url(&repo);
                 let target = dir.join(repo_dir_name(&repo));
@@ -604,7 +707,108 @@ fn open_config_in_editor() -> Result<()> {
         fs::write(&path, config.to_yaml_string()?)?;
     }
 
-    if let Some(swap_path) = vim_swap_path(&path) {
+    open_path_in_editor(&path)?;
+
+    let (_config, path) = load_config_for_command()?;
+    if let Some(path) = path {
+        println!("validated config: {}", path.display());
+    } else {
+        println!("validated config: defaults");
+    }
+    perform_reload()?;
+
+    Ok(())
+}
+
+fn open_keys_override_in_editor() -> Result<()> {
+    let dir =
+        Catalog::default_override_dir().context("no override directory could be determined")?;
+    fs::create_dir_all(&dir)?;
+    let path = dir.join("keys.yaml");
+
+    if !path.exists() {
+        fs::write(&path, default_keys_override_template())?;
+    }
+
+    open_path_in_editor(&path)?;
+    let parsed = parse_pack_file(&path)?;
+    println!(
+        "validated key overrides: {}\npack: {}\t{}\t{} entries",
+        path.display(),
+        parsed.pack.id,
+        parsed.pack.tool,
+        parsed.entries.len()
+    );
+
+    Ok(())
+}
+
+fn open_commands_override_in_editor() -> Result<()> {
+    let dir =
+        Catalog::default_override_dir().context("no override directory could be determined")?;
+    fs::create_dir_all(&dir)?;
+    let path = dir.join("commands.yaml");
+
+    if !path.exists() {
+        fs::write(&path, default_commands_override_template())?;
+    }
+
+    open_path_in_editor(&path)?;
+    let parsed = parse_pack_file(&path)?;
+    println!(
+        "validated command overrides: {}\npack: {}\t{}\t{} entries",
+        path.display(),
+        parsed.pack.id,
+        parsed.pack.tool,
+        parsed.entries.len()
+    );
+
+    Ok(())
+}
+
+fn default_keys_override_template() -> String {
+    r#"pack:
+  id: "tmux-core"
+  tool: "tmux"
+  title: "tmux Core Bindings"
+  version: "0.1.0"
+  source: "override"
+
+entries:
+  - id: "split-vertical"
+    type: "binding"
+    title: "Split Pane Vertically"
+    keys: "Ctrl-a + |"
+    command: "split-window -h"
+    description: "Override this keybinding with your own preferred key."
+    tags: ["panes", "layout", "custom"]
+    aliases: ["split pane vertical", "new pane right"]
+"#
+    .to_string()
+}
+
+fn default_commands_override_template() -> String {
+    r#"pack:
+  id: "tmux-core"
+  tool: "tmux"
+  title: "tmux Core Bindings"
+  version: "0.1.0"
+  source: "override"
+
+entries:
+  - id: "split-window-horizontal"
+    type: "command"
+    title: "Split Window Horizontally"
+    command: "tmux split-window -h -c '#{pane_current_path}'"
+    description: "Override this command with your preferred default arguments."
+    tags: ["panes", "layout", "custom"]
+    aliases: ["split pane vertical", "split side by side"]
+"#
+    .to_string()
+}
+
+fn open_path_in_editor(path: &PathBuf) -> Result<()> {
+    if let Some(swap_path) = vim_swap_path(path) {
         if swap_path.exists() {
             fs::remove_file(&swap_path).with_context(|| {
                 format!("failed to remove Vim swap file {}", swap_path.display())
@@ -617,7 +821,7 @@ fn open_config_in_editor() -> Result<()> {
 
     let status = ProcessCommand::new(&editor.program)
         .args(&editor.args)
-        .arg(&path)
+        .arg(path)
         .status()
         .with_context(|| format!("failed to start editor '{}'", editor.program))?;
 
@@ -631,14 +835,6 @@ fn open_config_in_editor() -> Result<()> {
                 .unwrap_or_else(|| "unknown".to_string())
         );
     }
-
-    let (_config, path) = load_config_for_command()?;
-    if let Some(path) = path {
-        println!("validated config: {}", path.display());
-    } else {
-        println!("validated config: defaults");
-    }
-    perform_reload()?;
 
     Ok(())
 }

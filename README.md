@@ -72,6 +72,8 @@ bindfinder
 
 ```bash
 bindfinder search tmux split
+bindfinder search --type keys tmux split
+bindfinder search --type commands tmux split
 ```
 
 Type immediately to filter. Press `Enter` to insert the selected command.
@@ -83,6 +85,7 @@ Inside the picker:
 - `Enter` inserts the selected command
 - `Esc` switches to normal mode
 - `/` returns to search mode
+- `Tab` cycles result scope between `all`, `commands`, and `keys`
 - placeholder commands open a small argument form before insertion
 - use your installed shortcut or just run `bindfinder`
 
@@ -90,10 +93,15 @@ Useful commands:
 
 - `bindfinder doctor`: show the detected environment and the active opener
 - `bindfinder reload`: rewrite and reapply shell/tmux integration
+- `bindfinder search --type keys tmux split`: search only keybindings
+- `bindfinder search --type commands tmux split`: search only commands and snippets
 - `bindfinder update`: install the latest released version
 - `bindfinder update --check`: check whether a newer version exists
 - `bindfinder config`: open the config in your editor, then validate and reload it
+- `bindfinder config keys`: open your key override YAML in the same editor flow
+- `bindfinder config commands`: open your command override YAML in the same editor flow
 - `bindfinder config validate`: validate the current config file explicitly
+- `bindfinder packs import owner/repo`: import bindfinder YAML packs with commands and keys
 - `bindfinder navi import denisidoro/cheats`: import the main navi cheat repository
 - `bindfinder uninstall`: remove the binary and managed integration blocks
 - `bindfinder uninstall --purge-data`: also remove config, state, packs, repos, and cache files
@@ -109,7 +117,17 @@ Shell helpers:
 
 - faster than searching docs or old shell history for the same commands
 - easier way to discover tmux keybindings, git commands, docker snippets, and shell workflows
+- local tmux bindings show up beside built-in reference entries, so custom keymaps are searchable
+- result badges distinguish local bindings from built-in defaults
 - works like a developer command launcher without leaving the terminal
+
+## Supported Key Sources
+
+- built-in default keybindings shipped with bindfinder
+- local tmux bindings parsed from your real tmux config
+- YAML override packs in `~/.config/bindfinder/overrides`
+- imported bindfinder YAML pack repositories
+- imported navi cheats for command/snippet content
 
 ## Docs
 
