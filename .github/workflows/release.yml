@@ -78,9 +78,23 @@ jobs:
           set -euo pipefail
           find dist -type f -name '*.tar.gz' -exec mv {} dist/ \;
 
+      - name: Resolve release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOTES_FILE="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$NOTES_FILE" ]; then
+            echo "missing release notes file: $NOTES_FILE"
+            exit 1
+          fi
+          echo "path=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.notes.outputs.path }}
           files: |
             dist/*.tar.gz
             install.sh
