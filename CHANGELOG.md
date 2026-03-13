@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.18 - 2026-03-13
+
+- make `bindfinder config` force-open the config by removing an existing Vim swap file first
+
 ## 0.1.17 - 2026-03-13
 
 - make `bindfinder config` remove an existing Vim swap file and open the config directly instead of dropping users into Vim recovery prompts
