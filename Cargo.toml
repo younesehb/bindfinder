@@ -2,8 +2,14 @@
 name = "bindfinder"
 version = "0.1.20"
 edition = "2021"
-description = "Terminal command palette for commands and keybindings"
+description = "Terminal command palette and cheatsheet browser for commands, keybindings, and shell workflows"
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/younesehb/bindfinder"
+homepage = "https://github.com/younesehb/bindfinder"
+documentation = "https://github.com/younesehb/bindfinder/tree/main/docs"
+keywords = ["cli", "tui", "terminal", "tmux", "cheatsheet"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0"

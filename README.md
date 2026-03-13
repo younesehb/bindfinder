@@ -1,12 +1,31 @@
 # bindfinder
 
-`bindfinder` helps you find commands and keybindings from the terminal.
+```text
+┌───────────────────────────────────────────────┐
+│ bindfinder                                    │
+│ terminal command palette for commands,        │
+│ keybindings, cheatsheets, and shell snippets  │
+└───────────────────────────────────────────────┘
+```
 
-Open it, type a tool name like `git`, `tmux`, or `docker`, pick what you want,
-and insert it back into your prompt.
+`bindfinder` is a terminal-first command palette and cheatsheet browser for
+developers. Search `tmux`, `git`, `docker`, `kubectl`, shell commands, and
+navi cheatsheets, then insert the result straight back into your prompt.
 
-If the command has placeholders like `<branch>` or `<package>`, `bindfinder`
-asks for them in the TUI before inserting the final command.
+It is built for keyboard-heavy terminal workflows: shell, SSH, tmux, and TUI
+usage without leaving the terminal.
+
+## Demo
+
+![bindfinder demo](./assets/demo/bindfinder.gif)
+
+## What It Does
+
+- search commands, keybindings, and cheatsheets from one TUI
+- browse built-in packs and imported navi/cheats repositories
+- insert the selected command directly into your shell prompt
+- fill command placeholders like `<branch>` or `<package>` inside the TUI
+- work well in shell sessions, tmux, and remote terminal workflows
 
 ## Install
 
@@ -36,7 +55,7 @@ bindfinder install auto --write
 `bindfinder config` validates and reapplies the current integration automatically
 when you exit the editor.
 
-## Use
+## Quickstart
 
 ```bash
 bindfinder
@@ -78,6 +97,12 @@ Shell helpers:
 - `bindfinder update` installs the latest released version
 - `bf` is kept as a short alias for the same shell-integrated path
 - the shell keybinding gives the best live in-prompt insertion flow
+
+## Why People Use It
+
+- faster than searching docs or old shell history for the same commands
+- easier way to discover tmux keybindings, git commands, docker snippets, and shell workflows
+- works like a developer command launcher without leaving the terminal
 
 ## Docs
 
