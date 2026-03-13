@@ -2,7 +2,7 @@
 
 ## 0.1.17 - 2026-03-13
 
-- make `bindfinder config` detect an existing Vim swap file and fail with a clear message instead of dropping users into Vim recovery prompts
+- make `bindfinder config` remove an existing Vim swap file and open the config directly instead of dropping users into Vim recovery prompts
 
 ## 0.1.16 - 2026-03-13
 

@@ -646,10 +646,9 @@ fn open_config_in_editor() -> Result<()> {
 
     if let Some(swap_path) = vim_swap_path(&path) {
         if swap_path.exists() {
-            anyhow::bail!(
-                "refusing to open config because a Vim swap file exists: {}\nremove it if it is stale, or return to the existing editor session first",
-                swap_path.display()
-            );
+            fs::remove_file(&swap_path).with_context(|| {
+                format!("failed to remove Vim swap file {}", swap_path.display())
+            })?;
         }
     }
 
