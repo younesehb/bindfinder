@@ -644,6 +644,15 @@ fn open_config_in_editor() -> Result<()> {
         fs::write(&path, config.to_yaml_string()?)?;
     }
 
+    if let Some(swap_path) = vim_swap_path(&path) {
+        if swap_path.exists() {
+            anyhow::bail!(
+                "refusing to open config because a Vim swap file exists: {}\nremove it if it is stale, or return to the existing editor session first",
+                swap_path.display()
+            );
+        }
+    }
+
     let editor = preferred_editor()
         .context("no editor found; set VISUAL or EDITOR, or install one of: nvim, vim, nano, vi")?;
 
@@ -712,6 +721,12 @@ fn command_exists(program: &str) -> bool {
         .status()
         .map(|status| status.success())
         .unwrap_or(false)
+}
+
+fn vim_swap_path(path: &PathBuf) -> Option<PathBuf> {
+    let parent = path.parent()?;
+    let file_name = path.file_name()?.to_str()?;
+    Some(parent.join(format!(".{file_name}.swp")))
 }
 
 fn log_tmux_capture(message: &str) -> Result<()> {
