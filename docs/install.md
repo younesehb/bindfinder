@@ -7,9 +7,9 @@ terminal. tmux popups and terminal-specific overlays are optional enhancements.
 Current supported install paths:
 
 - `curl | sh` installer from GitHub
-- `cargo install`
-- Homebrew from a formula
+- Homebrew tap
 - prebuilt release tarballs from GitHub Releases
+- `cargo install`
 - local man page install with `bindfinder install man --write`
 
 ## Recommended
@@ -44,6 +44,16 @@ After setup, `bindfinder` is ready to use.
 If the current shell session does not pick up the integration immediately, reload that shell once.
 If the installer cannot determine the right shell integration target, it leaves
 the binary installed and prints the follow-up command to run manually.
+
+## Homebrew
+
+Install from the public tap:
+
+```bash
+brew install younesehb/tap/bindfinder
+```
+
+That works on macOS and Linux systems that already have Homebrew installed.
 
 After changing integration-related config later, you can re-apply it with:
 
@@ -131,37 +141,11 @@ tar -xzf bindfinder-<version>-<target>.tar.gz
 install -m 0755 bindfinder-<version>-<target>/bindfinder ~/.local/bin/bindfinder
 ```
 
-## Homebrew
-
-A Homebrew formula is shipped in:
+The tap repository is:
 
 ```bash
-Formula/bindfinder.rb
+https://github.com/younesehb/homebrew-tap
 ```
-
-You can install from a checked-out copy of the repository:
-
-```bash
-brew install --build-from-source ./Formula/bindfinder.rb
-```
-
-That installs the binary and the shipped man page.
-
-You can also use the formula directly from GitHub:
-
-```bash
-brew tap younesehb/bindfinder https://github.com/younesehb/bindfinder
-brew install bindfinder
-```
-
-or:
-
-```bash
-brew install --build-from-source https://raw.githubusercontent.com/younesehb/bindfinder/main/Formula/bindfinder.rb
-```
-
-If you want fully bottled Homebrew installs later, the next step is to create a
-dedicated tap repository and attach macOS release artifacts to GitHub Releases.
 
 ## Man Page
 

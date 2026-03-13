@@ -39,6 +39,12 @@ That installs the binary, installs the man page, writes the default config, and
 sets up the shell integration automatically when it can detect your environment.
 It also imports `denisidoro/cheats` by default when `git` is available.
 
+Homebrew:
+
+```bash
+brew install younesehb/tap/bindfinder
+```
+
 Then:
 
 ```bash
