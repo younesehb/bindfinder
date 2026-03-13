@@ -53,6 +53,7 @@ pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo, include_snippet:
         format!("terminal: {}", terminal),
         format!("launch_key: {}", config.integration.launch_key),
         format!("selected_target: {}", format_target(&target)),
+        format!("effective_hotkey: {}", effective_hotkey(config, &target)),
     ];
 
     if include_snippet {
@@ -62,6 +63,15 @@ pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo, include_snippet:
     }
 
     lines.join("\n")
+}
+
+pub fn effective_hotkey(config: &AppConfig, target: &IntegrationTarget) -> String {
+    match target {
+        IntegrationTarget::Tmux => format!("prefix + {}", config.integration.tmux.key),
+        IntegrationTarget::Shell(_) => config.integration.shell.binding.clone(),
+        IntegrationTarget::Terminal(_) => config.integration.launch_key.clone(),
+        IntegrationTarget::Plain => "bindfinder".to_string(),
+    }
 }
 
 fn render_tmux(config: &AppConfig) -> String {

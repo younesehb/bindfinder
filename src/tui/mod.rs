@@ -18,6 +18,7 @@ use ratatui::{
 use crate::{
     config::AppConfig,
     core::catalog::{Catalog, CatalogEntry},
+    integration::{detect::EnvironmentInfo, install::effective_hotkey},
     state::UserState,
     update::UpdateInfo,
 };
@@ -33,8 +34,16 @@ pub fn run() -> Result<()> {
     let config = load_config_for_tui()?;
     let state = UserState::load().unwrap_or_default();
     let update_notice = crate::update::cached_or_fetch(env!("CARGO_PKG_VERSION"));
+    let environment = EnvironmentInfo::detect();
 
-    let result = run_app(&mut terminal, catalog, config, state, update_notice);
+    let result = run_app(
+        &mut terminal,
+        catalog,
+        config,
+        state,
+        update_notice,
+        environment,
+    );
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -70,8 +79,9 @@ fn run_app(
     config: AppConfig,
     state: UserState,
     update_notice: Option<UpdateInfo>,
+    environment: EnvironmentInfo,
 ) -> Result<Option<String>> {
-    let mut app = App::new(catalog, config, state, update_notice);
+    let mut app = App::new(catalog, config, state, update_notice, environment);
 
     loop {
         terminal.draw(|frame| {
@@ -146,9 +156,10 @@ fn run_app(
                     })
                     .unwrap_or_default();
                 let title = format!(
-                    "bindfinder  {} entries  {} matches{}{}{}",
+                    "bindfinder  {} entries  {} matches  open: {}{}{}{}",
                     app.catalog.len(),
                     result_count,
+                    app.launch_hint,
                     hidden_flag,
                     favorites_flag,
                     update_flag
@@ -205,11 +216,11 @@ fn run_app(
                     };
                     let footer = if let Some(info) = app.update_notice.as_ref() {
                         format!(
-                            "{}  Update available: {} -> {}. Run `bindfinder update`",
-                            footer, info.current_version, info.latest_version
+                            "{}  Open: {}  Update available: {} -> {}. Run `bindfinder update`",
+                            footer, app.launch_hint, info.current_version, info.latest_version
                         )
                     } else {
-                        footer.to_string()
+                        format!("{footer}  Open: {}", app.launch_hint)
                     };
                     frame.render_widget(Paragraph::new(footer), areas[2]);
                 }
@@ -246,6 +257,7 @@ struct App {
     favorites_only: bool,
     argument_prompt: Option<ArgumentPrompt>,
     update_notice: Option<UpdateInfo>,
+    launch_hint: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -282,7 +294,10 @@ impl App {
         config: AppConfig,
         state: UserState,
         update_notice: Option<UpdateInfo>,
+        environment: EnvironmentInfo,
     ) -> Self {
+        let target = environment.choose_target(&config);
+        let launch_hint = launch_hint_label(&target, &config);
         let mut app = Self {
             config,
             catalog,
@@ -296,6 +311,7 @@ impl App {
             favorites_only: false,
             argument_prompt: None,
             update_notice,
+            launch_hint,
         };
         app.refresh();
         app
@@ -710,6 +726,13 @@ impl App {
     }
 }
 
+fn launch_hint_label(
+    target: &crate::integration::detect::IntegrationTarget,
+    config: &AppConfig,
+) -> String {
+    effective_hotkey(config, target)
+}
+
 fn build_items<'a>(entries: &'a [CatalogEntry], state: &'a UserState) -> Vec<ListItem<'a>> {
     if entries.is_empty() {
         return vec![ListItem::new("No matches")];
@@ -931,6 +954,15 @@ mod tests {
     use super::*;
     use crate::core::pack::{Entry, EntryType, Pack, PackMeta};
 
+    fn test_environment() -> EnvironmentInfo {
+        EnvironmentInfo {
+            inside_tmux: false,
+            over_ssh: false,
+            shell: None,
+            terminal: None,
+        }
+    }
+
     fn sample_catalog() -> Catalog {
         Catalog::from_packs(vec![Pack {
             pack: PackMeta {
@@ -962,6 +994,7 @@ mod tests {
             AppConfig::default(),
             UserState::default(),
             None,
+            test_environment(),
         );
         assert_eq!(app.input_mode, InputMode::Search);
 
@@ -1004,7 +1037,13 @@ mod tests {
         }])
         .expect("catalog should build");
 
-        let mut app = App::new(catalog, AppConfig::default(), UserState::default(), None);
+        let mut app = App::new(
+            catalog,
+            AppConfig::default(),
+            UserState::default(),
+            None,
+            test_environment(),
+        );
         let result = app.selected_output();
 
         assert!(result.is_none());
@@ -1047,7 +1086,13 @@ mod tests {
         }])
         .expect("catalog should build");
 
-        let mut app = App::new(catalog, AppConfig::default(), UserState::default(), None);
+        let mut app = App::new(
+            catalog,
+            AppConfig::default(),
+            UserState::default(),
+            None,
+            test_environment(),
+        );
         assert!(app.selected_output().is_none());
 
         let prompt = app
@@ -1089,7 +1134,13 @@ mod tests {
         }])
         .expect("catalog should build");
 
-        let mut app = App::new(catalog, AppConfig::default(), UserState::default(), None);
+        let mut app = App::new(
+            catalog,
+            AppConfig::default(),
+            UserState::default(),
+            None,
+            test_environment(),
+        );
         app.input_mode = InputMode::Normal;
         assert!(app.selected_output().is_none());
         assert_eq!(app.input_mode, InputMode::Arguments);

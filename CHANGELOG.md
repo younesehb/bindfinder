@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.15 - 2026-03-13
+
+- show the effective launch hotkey in `bindfinder doctor`
+- show the effective launch hotkey in the TUI so users can see the current opener at a glance
+
 ## 0.1.14 - 2026-03-13
 
 - fix the zsh shell integration on macOS and other zsh setups by avoiding the read-only `status` variable name
