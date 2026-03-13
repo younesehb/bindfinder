@@ -56,18 +56,19 @@ when you exit the editor.
 
 ## Quickstart
 
-Default opener:
+### 3 Ways To Use bindfinder
 
-- outside tmux: `Ctrl-]`
-- inside tmux: `prefix + Ctrl-]`
+1. Use the default shortcut
+   - outside tmux: `Ctrl-]`
+   - inside tmux: `prefix + ]`
 
-Open the picker:
+2. Run the picker directly
 
 ```bash
 bindfinder
 ```
 
-Search directly from the CLI:
+3. Search directly from the CLI
 
 ```bash
 bindfinder search tmux split
@@ -75,7 +76,7 @@ bindfinder search tmux split
 
 Type immediately to filter. Press `Enter` to insert the selected command.
 
-Normal usage:
+Inside the picker:
 
 - `bindfinder` opens the picker
 - type to search
@@ -87,20 +88,17 @@ Normal usage:
 
 Useful commands:
 
-```bash
-bindfinder doctor
-bindfinder reload
-bindfinder update
-bindfinder update --check
-bindfinder config
-bindfinder config validate
-bindfinder uninstall
-bindfinder uninstall --purge-data
-bindfinder install all --write
-bindfinder search tmux split
-bindfinder install man --write
-bindfinder navi import denisidoro/cheats
-```
+- `bindfinder doctor`: show the detected environment and the active opener
+- `bindfinder reload`: rewrite and reapply shell/tmux integration
+- `bindfinder update`: install the latest released version
+- `bindfinder update --check`: check whether a newer version exists
+- `bindfinder config`: open the config in your editor, then validate and reload it
+- `bindfinder config validate`: validate the current config file explicitly
+- `bindfinder search tmux split`: search commands directly from the CLI
+- `bindfinder navi import denisidoro/cheats`: import the main navi cheat repository
+- `bindfinder install man --write`: install the man page
+- `bindfinder uninstall`: remove the binary and managed integration blocks
+- `bindfinder uninstall --purge-data`: also remove config, state, packs, repos, and cache files
 
 Shell helpers:
 
@@ -133,9 +131,9 @@ Shell helpers:
 - tmux and terminal-specific overlays are optional enhancements.
 - There are two launch keys in practice:
   - outside tmux: `Ctrl-]`
-  - inside tmux: `prefix + Ctrl-]`
+  - inside tmux: `prefix + ]`
 - `integration.shell.binding` is the shell key.
-- `integration.tmux.key` is written in the same `ctrl-...]` style in YAML and translated to tmux syntax internally.
+- `integration.tmux.key` is the key after your tmux prefix.
 - Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
 - `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
 - The installer script downloads release artifacts from GitHub, installs into `~/.local` by default, and runs first-time setup unless `--no-setup` is used.
