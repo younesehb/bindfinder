@@ -10,7 +10,6 @@ Current supported install paths:
 - Homebrew tap
 - prebuilt release tarballs from GitHub Releases
 - `cargo install`
-- local man page install with `bindfinder install man --write`
 
 ## Recommended
 
@@ -90,9 +89,8 @@ With the shell integration loaded:
 - `bindfinder ...subcommand...` still calls the real binary
 - `bf` is a short alias for the shell-integrated picker path
 - the default shell binding is `Ctrl-]`
-- the default tmux binding is `prefix + Ctrl-]`
-- in the YAML config, set `integration.tmux.key: ctrl-]`
-- bindfinder converts that to tmux's `C-]` syntax internally
+- the default tmux binding is `prefix + ]`
+- in the YAML config, set `integration.tmux.key: "]"` if you want the default tmux opener
 
 ## Uninstall
 
@@ -149,18 +147,15 @@ https://github.com/younesehb/homebrew-tap
 
 ## Man Page
 
-`cargo install` does not install man pages automatically. `bindfinder` ships a
-man page and can install it itself:
+The installer and Homebrew formula install the man page automatically.
+`bindfinder` also keeps the default man page installed when you run it.
+
+If you need to force a manual install or use a custom destination:
 
 ```bash
 bindfinder install man --write
-man bindfinder
-```
-
-Override the destination with:
-
-```bash
 BINDFINDER_MANPAGE_DIR=/custom/man/man1 bindfinder install man --write
+man bindfinder
 ```
 
 ## Default Paths

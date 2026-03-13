@@ -32,6 +32,22 @@ pub fn render_man_page() -> &'static str {
     include_str!("../../man/bindfinder.1")
 }
 
+pub fn ensure_default_man_page() -> Result<()> {
+    let Some(path) = default_man_install_path() else {
+        return Ok(());
+    };
+
+    let content = render_man_page();
+
+    if let Ok(existing) = fs::read_to_string(&path) {
+        if existing == content {
+            return Ok(());
+        }
+    }
+
+    write_plain_file(&path, content)
+}
+
 pub fn render_doctor(config: &AppConfig, env: &EnvironmentInfo, include_snippet: bool) -> String {
     let target = env.choose_target(config);
     let shell = env

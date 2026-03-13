@@ -95,7 +95,6 @@ Useful commands:
 - `bindfinder config`: open the config in your editor, then validate and reload it
 - `bindfinder config validate`: validate the current config file explicitly
 - `bindfinder navi import denisidoro/cheats`: import the main navi cheat repository
-- `bindfinder install man --write`: install the man page
 - `bindfinder uninstall`: remove the binary and managed integration blocks
 - `bindfinder uninstall --purge-data`: also remove config, state, packs, repos, and cache files
 
@@ -133,7 +132,8 @@ Shell helpers:
 - `integration.shell.binding` is the shell key.
 - `integration.tmux.key` is the key after your tmux prefix.
 - Prebuilt release automation currently targets Linux `x86_64` and macOS Apple Silicon. Intel macOS can still install from source with Cargo or Homebrew.
-- `cargo install` does not install the man page automatically. Use `bindfinder install man --write`.
+- bindfinder keeps the default man page installed automatically when you run it.
+- `bindfinder install man --write` still exists as a manual fallback.
 - The installer script downloads release artifacts from GitHub, installs into `~/.local` by default, and runs first-time setup unless `--no-setup` is used.
 - If the current shell session does not pick up the integration immediately after install, reload that shell once.
 - To remove bindfinder again, use `bindfinder uninstall`. Add `--purge-data` to also remove config, state, packs, repos, and cache files.

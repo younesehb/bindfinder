@@ -16,9 +16,9 @@ use crate::{
     integration::{
         detect::EnvironmentInfo,
         install::{
-            default_install_path, default_man_install_path, explicit_target, remove_install_block,
-            render_auto_install, render_doctor, render_install_for_target, render_man_page,
-            write_install_block, write_plain_file,
+            default_install_path, default_man_install_path, ensure_default_man_page,
+            explicit_target, remove_install_block, render_auto_install, render_doctor,
+            render_install_for_target, render_man_page, write_install_block, write_plain_file,
         },
     },
     paths,
@@ -205,6 +205,7 @@ enum ListKind {
 }
 
 pub fn run() -> Result<()> {
+    let _ = ensure_default_man_page();
     let args = Args::parse();
 
     match args.command {
