@@ -94,7 +94,6 @@ Useful commands:
 - `bindfinder update --check`: check whether a newer version exists
 - `bindfinder config`: open the config in your editor, then validate and reload it
 - `bindfinder config validate`: validate the current config file explicitly
-- `bindfinder search tmux split`: search commands directly from the CLI
 - `bindfinder navi import denisidoro/cheats`: import the main navi cheat repository
 - `bindfinder install man --write`: install the man page
 - `bindfinder uninstall`: remove the binary and managed integration blocks
@@ -104,7 +103,6 @@ Shell helpers:
 
 - typing `bindfinder` with no arguments in an interactive shell now uses the shell-integrated picker path
 - `bindfinder doctor` and other subcommands still go to the real binary
-- `bindfinder update` installs the latest released version
 - `bf` is kept as a short alias for the same shell-integrated path
 - the shell keybinding gives the best live in-prompt insertion flow
 
